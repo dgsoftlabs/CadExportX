@@ -166,24 +166,6 @@ The plugin uses a dark theme interface similar to AutoCAD, ensuring visual consi
 - Enable only relevant block types to keep Excel files manageable
 - Choose specific attributes to export (hide internal/system parameters)
 
-#### Custom Commands
-Available via AutoCAD command line:
-- `dgTerm_Blk` - Auto-number terminals in selected block
-- `dgTerm_Txt` - Auto-number text objects with pattern
-- `dgTerm_AltDesc_Txt` - Add alternating descriptions to text
-- `dgCable_Pair_Blk` - Number cable pairs in blocks
-- `dgCable_Pair_Txt` - Number cable pairs in text objects
-- `dgCable_Num_Txt` - Number cables sequentially in text objects
-
-## Available Commands
-
-- `dgTerm_Blk` - Auto-number terminals in selected block reference
-- `dgTerm_Txt` - Auto-number text objects with custom pattern (e.g., "1:(+):(-)")
-- `dgTerm_AltDesc_Txt` - Add alternating descriptions to selected text objects
-- `dgCable_Pair_Blk` - Number cable pairs in blocks with alternating colors
-- `dgCable_Pair_Txt` - Number cable pairs in text objects (split by position)
-- `dgCable_Num_Txt` - Number cables sequentially in text objects
-
 ## Project Structure
 
 ```
