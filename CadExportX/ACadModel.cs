@@ -1,0 +1,1723 @@
+﻿using Autodesk.AutoCAD.ApplicationServices;
+using Autodesk.AutoCAD.DatabaseServices;
+using Autodesk.AutoCAD.EditorInput;
+using Autodesk.AutoCAD.Geometry;
+using Autodesk.AutoCAD.Runtime;
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Data;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Xml.Serialization;
+using Cm = System.ComponentModel;
+using Exc = Microsoft.Office.Interop.Excel;
+using Reg = Microsoft.Win32;
+using wf = System.Windows.Forms;
+
+namespace ModelSpace
+{
+    public class ACadModel : IExtensionApplication
+    {
+        // Registry
+        public string RegKeyName = "HKEY_CURRENT_USER" + "\\" + "OBJECT_TOOLS_SETT";
+
+        public string RegProjectPath = "PROJ_PATH";
+
+        //LOGS
+        public string LogsFolderPath = $"{Environment.CurrentDirectory}\\Logs\\";
+
+        public string LogFormat = "yyyy-dd-M--HH-mm-ss";
+
+        public ACadViewModel ViewModel = null;
+
+        // Cancel Token
+        public CancellationTokenSource tokenSource = new CancellationTokenSource();
+
+        public ObservableCollection<PageInfo> PageInfoList { get; set; }
+
+        public ObservableCollection<Sett> SettList { get; set; }
+
+        // Observations
+        private List<string> PathList = new List<string>();
+
+        private Boolean IsElectrical { get; set; }
+        private string ElectricalProjPath { get; set; }
+        private List<Tuple<string, string>> ElectricalPaths { get; set; }
+
+        public delegate void Message(string msg);
+
+        public event Message Mess;
+
+        private static Control syncCtrl;
+
+        public void Initialize()
+        {
+            try
+            {
+                // Initialize syncCtrl FIRST before creating any WPF elements
+                if (syncCtrl == null)
+                    syncCtrl = new Control();
+
+                System.Diagnostics.Debug.WriteLine("=== TK Helper: syncCtrl initialized ===");
+
+                PageInfoList = new ObservableCollection<PageInfo>();
+                SettList = new ObservableCollection<Sett>();
+
+                System.Diagnostics.Debug.WriteLine("=== TK Helper: Creating ViewModel ===");
+                ViewModel = new ACadViewModel(this);
+
+                System.Diagnostics.Debug.WriteLine("=== TK Helper: ViewModel created successfully ===");
+
+                Mess += AutoCadCablePlug_Mess;
+            }
+            catch (System.Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"=== TK Helper ERROR: {ex.Message} ===");
+                System.Diagnostics.Debug.WriteLine($"Stack: {ex.StackTrace}");
+                Application.DocumentManager.MdiActiveDocument?.Editor?.WriteMessage($"\nTK Helper Error: {ex.Message}\n");
+            }
+        }
+
+        public void Terminate()
+        {
+            Mess -= AutoCadCablePlug_Mess;
+
+            // Saving data
+            string s = Reg.Registry.GetValue(RegKeyName, RegProjectPath, string.Empty).ToString();
+            if (!string.IsNullOrEmpty(s) && PageInfoList.Count > 0)
+                SaveDatabase(s + "Database.xml");
+        }
+
+        public async Task DatabaseUpdate(string pr)
+        {
+            try
+            {
+                CloseDocuments();
+                ShowWait();
+
+                #region Electrical Prepartion
+
+                List<Tuple<string, string>> dwgs = new List<Tuple<string, string>>();
+                foreach (var i in Directory.GetFiles(pr, "*.dwg", SearchOption.AllDirectories))
+                    dwgs.Add(new Tuple<string, string>(i, Path.GetFileName(Path.GetDirectoryName(i))));
+
+                if (dwgs.Count == 0)
+                {
+                    Mess?.Invoke("There is no any DWG files to process... ");
+                    return;
+                }
+
+                ElectricalProjPath = Directory.GetFiles(pr, "*.wdp")?.Count() > 0 ? Directory.GetFiles(pr, "*.wdp").First() : "";
+                ElectricalPaths = new List<Tuple<string, string>>();
+                IsElectrical = false;
+
+                if (!string.IsNullOrEmpty(ElectricalProjPath) && File.Exists(ElectricalProjPath))
+                {
+                    IsElectrical = true;
+                    var lines = File.ReadAllLines(ElectricalProjPath).Where(x => x.ToLower().Contains(".dwg")).ToList();
+                    var subs = File.ReadAllLines(ElectricalProjPath).Where(x => x.Contains("=====SUB=")).ToList();
+
+                    if (subs.Count == 0)
+                    {
+                        for (int i = 0; i < lines.Count; i++)
+                            ElectricalPaths.Add(new Tuple<string, string>(lines[i], "EMPTY"));
+                    }
+                    else
+                    {
+                        for (int i = 0; i < lines.Count; i++)
+                            ElectricalPaths.Add(new Tuple<string, string>(lines[i], subs[i].Replace("=====SUB=", string.Empty)));
+                    }
+
+                    dwgs.Clear();
+
+                    foreach (var k in ElectricalPaths)
+                        dwgs.Add(new Tuple<string, string>($"{pr}{k.Item1}", k.Item2));
+                }
+
+                #endregion Electrical Prepartion
+
+                ClearDatabase();
+
+                await Task.Run(() =>
+                {
+                    Mess?.Invoke(" --------------------------------------------");
+                    Mess?.Invoke(" ====     DATABASE UPDATE STARTED        ====");
+                    Mess?.Invoke(" --------------------------------------------");
+
+                    int i = 1;
+                    foreach (var x in dwgs)
+                    {
+                        tokenSource.Token.ThrowIfCancellationRequested();
+
+                        if (!File.Exists(x.Item1))
+                            Mess?.BeginInvoke($"{Environment.NewLine} Drawing: {x.Item1}  Not Exists", null, null);
+                        else
+                        {
+                            #region DB operation
+
+                            Database db = new Database(false, true);
+
+                            db.ReadDwgFile(x.Item1, FileOpenMode.OpenForReadAndAllShare, true, null);
+                            ObjectId blkRecId = ObjectId.Null;
+                            db.CloseInput(true);
+                            PageInfoList.Add(new PageInfo() { Path = x.Item1, Sub = x.Item2 });
+
+                            Autodesk.AutoCAD.DatabaseServices.TransactionManager tm = db.TransactionManager;
+                            using (tm.StartTransaction())
+                            {
+                                // Open the block table
+                                BlockTable bt = (BlockTable)tm.GetObject(db.BlockTableId, OpenMode.ForRead, false);
+
+                                foreach (ObjectId btrId in bt)
+                                {
+                                    BlockTableRecord btr = (BlockTableRecord)tm.GetObject(btrId, OpenMode.ForRead, false);
+                                    foreach (ObjectId blId in btr.GetBlockReferenceIds(true, false))
+                                    {
+                                        if (!btr.IsLayout && !btr.IsAnonymous && !btr.IsFromExternalReference && !btr.IsErased && !btr.IsFromOverlayReference)
+                                        {
+                                            // Block reference
+                                            BlockReference blkRef = (BlockReference)tm.GetObject(blId, OpenMode.ForRead, false);
+
+                                            if (blkRef.BlockName.ToUpper() == "*MODEL_SPACE" && blkRef.Name != "WD_M") // Only those that are on the model
+                                            {
+                                                // Adding new block and its name
+                                                PageInfoList.Last().Blocks.Add(new BlocksInfo()
+                                                {
+                                                    Id = blkRef.Handle.Value,
+                                                    Name = blkRef.Name,
+                                                    PagePath = x.Item1,
+                                                    Sub = x.Item2,
+                                                    X = blkRef.Position.X,
+                                                    Y = blkRef.Position.Y
+                                                });
+
+                                                AttributeCollection attCol = blkRef.AttributeCollection;
+                                                foreach (ObjectId attId in attCol)
+                                                {
+                                                    AttributeReference attRef = (AttributeReference)tm.GetObject(attId, OpenMode.ForRead);
+                                                    PageInfoList.Last().Blocks.Last().Parementers.Add(new BlockParam() { Name = attRef.Tag, Value = attRef.TextString });
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                Mess?.Invoke($"Drawing Proceed: {x.Item1.Replace(pr, @" ... \")} [ {i} - {dwgs.Count} ]");
+
+                                i++;
+                            }
+                            db.Dispose();
+                            db = null;
+
+                            #endregion DB operation
+                        }
+                    }
+
+                    ViewModel.BlockAmount = PageInfoList.SelectMany(x => x.Blocks).Count();
+
+                    Mess?.Invoke(" --------------------------------------------");
+                    Mess?.Invoke(" ====    DATABASE UPDATE FINISHED       ==== ");
+                    Mess?.Invoke(" --------------------------------------------");
+                }, tokenSource.Token);
+
+                // Database save
+                syncCtrl.Dispatcher.Invoke(() =>
+               {
+                   // Saving data
+                   string s = Reg.Registry.GetValue(RegKeyName, RegProjectPath, string.Empty).ToString();
+                   if (!string.IsNullOrEmpty(s) && PageInfoList.Count > 0)
+                       SaveDatabase(s + "Database.xml");
+
+                   SettList.Clear();
+                   foreach (var el in PageInfoList.SelectMany(x => x.Blocks).GroupBy(x => x.Name).Select(x => x.First()).OrderBy(x => x.Name))
+                       SettList.Add(new Sett(el));
+
+                   Mess?.Invoke(" Database was saved!");
+               });
+
+                CloseDocuments();
+                ShowReady();
+            }
+            catch (OperationCanceledException ae)
+            {
+                PageInfoList.Clear();
+                Mess?.Invoke($"Task was canceled: {ae.Message}");
+
+                tokenSource.Dispose();
+                tokenSource = new CancellationTokenSource();
+
+                CloseDocuments();
+                ShowReady();
+            }
+            catch (System.Exception Ex)
+            {
+                Mess?.Invoke($"{Ex.Message}:  {Ex.StackTrace}");
+            }
+        }
+
+        public void SendInformation(string s)
+        {
+            Mess?.Invoke(s);
+        }
+
+        private void AutoCadCablePlug_Mess(string msg)
+        {
+            syncCtrl.Dispatcher.InvokeAsync(new Action(() =>
+            {
+                Application.DocumentManager.MdiActiveDocument?.Editor?.WriteMessage($"{msg}{Environment.NewLine}");
+            }));
+        }
+
+        public async void DownloadChanges()
+        {
+            CloseDocuments();
+            ShowWait();
+
+            Mess?.Invoke(" --------------------------------------------");
+            Mess?.Invoke(" ==== !!! SAVING ALL DRAWINGS STARTED !!!====");
+            Mess?.Invoke(" --------------------------------------------");
+
+            await Task.Run(() =>
+            {
+                syncCtrl.Dispatcher.Invoke(() =>
+                {
+                    int i = 1;
+
+                    // Adapting new format
+
+                    foreach (PageInfo p in PageInfoList)
+                    {
+                        try
+                        {
+                            Database db = new Database(false, true);
+                            db.ReadDwgFile(p.Path, FileShare.ReadWrite, true, "");
+                            db.CloseInput(true);
+                            HostApplicationServices.WorkingDatabase = db;
+
+                            #region Transation
+
+                            Transaction tm = db.TransactionManager.StartTransaction();
+                            using (tm)
+                            {
+                                //#region Style change
+                                //string stl = "WD_IEC";
+                                //TextStyleTable tst = (TextStyleTable)tm.GetObject(db.TextStyleTableId, OpenMode.ForWrite);
+                                //if (tst.Has(stl))
+                                //{
+                                //    var newstyle = tst[stl];
+                                //    db.Textstyle = newstyle;
+                                //}
+                                //#endregion
+
+                                BlockTable bt = (BlockTable)tm.GetObject(db.BlockTableId, OpenMode.ForRead, false);
+                                foreach (BlocksInfo b in p.Blocks)
+                                {
+                                    if (bt.Has(b.Name))
+                                    {
+                                        BlockTableRecord btr = (BlockTableRecord)tm.GetObject(bt[b.Name], OpenMode.ForRead, false);
+                                        var blkRefsIds = btr.GetBlockReferenceIds(true, true);
+                                        if (blkRefsIds.Count > 0)
+                                        {
+                                            List<BlockReference> blkRef = (from x in blkRefsIds.Cast<ObjectId>()
+                                                                           select (BlockReference)tm.GetObject(x, OpenMode.ForRead, false)).ToList();
+
+                                            if (blkRef.Exists(x => x.Handle.Value == b.Id))
+                                            {
+                                                BlockReference bRef = blkRef.Find(x => x.Handle.Value == b.Id);
+                                                if (bRef != null)
+                                                {
+                                                    AttributeCollection attCol = bRef.AttributeCollection;
+                                                    foreach (ObjectId attId in attCol)
+                                                    {
+                                                        AttributeReference attRef = (AttributeReference)tm.GetObject(attId, OpenMode.ForWrite);
+                                                        if (b.Parementers.ToList().Exists(x => x.Name == attRef.Tag))
+                                                        {
+                                                            BlockParam bp = b.Parementers.ToList().Find(x => x.Name == attRef.Tag);
+                                                            attRef.UpgradeOpen();
+
+                                                            // Parameter change
+                                                            //if (attRef.Tag.Contains("SIG") && attRef.Tag.Contains("DESC2"))
+                                                            // attRef.Invisible = false;
+
+                                                            attRef.TextString = bp.Value;
+                                                            bRef.RecordGraphicsModified(true);
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                tm.Commit();
+                            }
+
+                            #endregion Transation
+
+                            HostApplicationServices.WorkingDatabase = db;
+                            db.SaveAs(p.Path, true, DwgVersion.Current, db.SecurityParameters);
+                            Mess?.Invoke($"Drawing changed and saved: {p.Path}  [{i} -> {PageInfoList.Count}]");
+                            db.Dispose();
+                            HostApplicationServices.WorkingDatabase = null;
+
+                            i++;
+                        }
+                        catch (System.Exception Ex)
+                        {
+                            Mess?.Invoke($"{p.Path}: {Ex.Message}");
+                        }
+                    }
+                });
+            });
+
+            CloseDocuments();
+            ShowReady();
+
+            Mess?.Invoke(" --------------------------------------------");
+            Mess?.Invoke(" ====!!! SAVING ALL DRAWINGS FINISHED !!!====");
+            Mess?.Invoke(" --------------------------------------------");
+        }
+
+        public void ClearDatabase()
+        {
+            // Clearing data
+            foreach (var p in PageInfoList)
+            {
+                foreach (var b in p.Blocks)
+                    b.Parementers.Clear();
+
+                p.Blocks.Clear();
+            }
+            PageInfoList.Clear();
+        }
+
+        public void CloseDocuments()
+        {
+            DocumentCollection docs = Application.DocumentManager;
+            foreach (Document doc in docs)
+            {
+                // First cancel any running command
+                if (doc.CommandInProgress != "" && doc.CommandInProgress != "CD")
+                {
+                    //AcadDocument oDoc = (AcadDocument)doc.GetAcadDocument();
+                    //oDoc.SendCommand();
+                    doc.SendStringToExecute("\x03\x03", true, false, false);
+                }
+                doc.CloseAndDiscard();
+            }
+        }
+
+        private void ShowWait()
+        {
+            try
+            {
+                string m = $"{Environment.CurrentDirectory}\\wait.dwg";
+                if (File.Exists(m))
+                {
+                    Application.DocumentManager.Open(m);
+                }
+            }
+            catch (System.Exception Ex)
+            {
+                Mess?.Invoke($"{Ex.Message}: {Ex.StackTrace}");
+            }
+        }
+
+        private void ShowReady()
+        {
+            string x = $"{Environment.CurrentDirectory}\\ready.dwg";
+            if (File.Exists(x))
+            {
+                Application.DocumentManager.Open(x);
+            }
+        }
+
+        public void LoadDatabse(string dbpath)
+        {
+            try
+            {
+                XmlSerializer XmlSer = new XmlSerializer(typeof(ObservableCollection<PageInfo>));
+                using (Stream str = new FileStream(dbpath, FileMode.Open, FileAccess.Read, FileShare.None))
+                {
+                    PageInfoList = (ObservableCollection<PageInfo>)XmlSer.Deserialize(str);
+
+                    SettList.Clear();
+                    foreach (var el in PageInfoList.SelectMany(x => x.Blocks).GroupBy(x => x.Name).Select(x => x.First()))
+                        SettList.Add(new Sett(el));
+                }
+            }
+            catch (System.Exception Ex)
+            {
+                Mess?.Invoke($"{Ex.Message}: {Ex.StackTrace}");
+            }
+        }
+
+        public void SaveDatabase(string dbpath)
+        {
+            try
+            {
+                XmlSerializer XmlSer = new XmlSerializer(typeof(ObservableCollection<PageInfo>));
+                using (Stream str = new FileStream(dbpath, FileMode.Create, FileAccess.Write, FileShare.None))
+                {
+                    XmlSer.Serialize(str, PageInfoList);
+                }
+            }
+            catch (System.Exception Ex)
+            {
+                Mess?.Invoke($"{Ex.Message}: {Ex.StackTrace}");
+            }
+        }
+
+        // EXCEL LISTS
+
+        public async void GenerateExcelList(ACadViewModel VMod)
+        {
+            string doc_name = "excel_list";
+
+            // Closing all Excel instances opened in background
+            foreach (var pr in Process.GetProcessesByName("EXCEL"))
+            {
+                if (pr.MainWindowTitle == "" || pr.MainWindowTitle.Contains(doc_name + ".xlsx"))
+                    pr.Kill();
+            }
+
+            if (!Directory.Exists(Path.GetDirectoryName($"{VMod.ProjDir}Lists\\")))
+                Directory.CreateDirectory(Path.GetDirectoryName($"{VMod.ProjDir}Lists\\"));
+
+            Mess?.Invoke(" --------------------------------------------");
+            Mess?.Invoke($" ==== EXCEL ALL LIST GENERATION STARTED ====");
+            Mess?.Invoke(" --------------------------------------------");
+
+            Exc.Application App = new Exc.Application() { DisplayAlerts = false };
+            Exc.Workbook wrk = App.Workbooks.Add(Exc.XlWBATemplate.xlWBATWorksheet);
+            Exc.Worksheet wsh = wrk.Worksheets[1];
+            wsh.Name = "ALL";
+
+            await Task.Run(() =>
+   {
+       // Headers
+       var hds_first_col = new List<string>() { "ID", "BL_PATH", "BLOCK_NAME", "BL_SH" };
+
+       // Adding all parameters
+
+       string[] all_head = new string[] { };
+       all_head = SettList.SelectMany(x => x.Params).Where(x => x.Enable).Select(x => x.Name).OrderBy(x => x).ToArray();
+
+       // Excel header generation
+       List<string> buff = new List<string>(hds_first_col);
+       buff.AddRange(all_head);
+       int p = 1;
+       foreach (var a in buff)
+       {
+           wsh.Cells[1, p].Value = a;
+           p++;
+       }
+
+       // Sum
+       int sum = PageInfoList.SelectMany(x => x.Blocks).Count();
+
+       int i = 2;
+       foreach (var pg in PageInfoList)
+       {
+           //Rows
+           foreach (var bl in pg.Blocks.Where(x => SettList.ToList().Exists(m => m.Name == x.Name) && SettList.ToList().Find(m => m.Name == x.Name).Enable))
+           {
+               int j = 1;
+               foreach (var t in buff)
+               {
+                   wsh.Cells[i, j].Value = bl.GetValue(t);
+                   wsh.Cells[i, j].HorizontalAlignment = Exc.XlHAlign.xlHAlignCenter;
+                   j++;
+               }
+
+               i++;
+
+               #region Info Current
+
+               Mess?.Invoke($"{i - 2} -> {sum}");
+
+               #endregion Info Current
+           }
+       }
+   });
+
+            Mess?.Invoke(" --------------------------------------------");
+            Mess?.Invoke(" ==== EXCEL SG. LIST GENERATION FINISHED ====");
+            Mess?.Invoke(" --------------------------------------------");
+
+            wsh.Columns[1].Interior.Color = System.Drawing.ColorTranslator.ToOle(System.Drawing.Color.LightGray);
+            wsh.Columns[2].Interior.Color = System.Drawing.ColorTranslator.ToOle(System.Drawing.Color.LightGray);
+            wsh.Columns[3].Interior.Color = System.Drawing.ColorTranslator.ToOle(System.Drawing.Color.LightGray);
+
+            App.Visible = true;
+
+            wsh.Cells[2, 4].Select();
+            wsh.Application.ActiveWindow.FreezePanes = true;
+
+            wsh.EnableAutoFilter = true;
+            wsh.Cells.AutoFilter(1);
+            wsh.Columns.AutoFit();
+
+            if (File.Exists($"{VMod.ProjDir}Lists\\{doc_name}.xlsx"))
+                File.Delete($"{VMod.ProjDir}Lists\\{doc_name}.xlsx");
+
+            wrk.SaveAs($"{VMod.ProjDir}Lists\\{doc_name}.xlsx");
+
+            App.WorkbookAfterSave += App_WorkbookAfterSave;
+            App.WorkbookBeforeClose += App_WorkbookBeforeClose;
+
+            Marshal.ReleaseComObject(wsh);
+            Marshal.ReleaseComObject(wrk);
+            Marshal.ReleaseComObject(App);
+
+            wsh = null;
+            wrk = null;
+            App = null;
+        }
+
+        private void App_WorkbookBeforeClose(Exc.Workbook Wb, ref bool Cancel)
+        {
+            Wb.Application.WorkbookAfterSave -= App_WorkbookAfterSave;
+            Wb.Application.WorkbookBeforeClose -= App_WorkbookBeforeClose;
+            GetExcelProcess(Wb.Application)?.Kill();
+        }
+
+        private void App_WorkbookAfterSave(Exc.Workbook Wb, bool Success)
+        {
+            Mess?.Invoke(" --------------------------------------------");
+            Mess?.Invoke("  ====     EXCEL SAVING  STARTED         ====");
+            Mess?.Invoke(" --------------------------------------------");
+
+            Exc.Worksheet whs = Wb.Worksheets[1];
+            Mess?.Invoke($"{1} -> {whs.UsedRange.Rows.Count}");
+
+            for (int i = 2; i < whs.UsedRange.Rows.Count + 1; i++)
+            {
+                long id = long.Parse(whs.Cells[i, 1].Value?.ToString() ?? "0") ?? 0;
+                string pg = whs.Cells[i, 2].Value?.ToString() ?? string.Empty;
+
+                for (int j = 5; j < whs.UsedRange.Columns.Count + 1; j++)
+                {
+                    string param = whs.Cells[1, j].Value?.ToString() ?? string.Empty;
+                    string val = whs.Cells[i, j].Value?.ToString() ?? string.Empty;
+
+                    if (!string.IsNullOrEmpty(param))
+                    {
+                        var p = PageInfoList.ToList().Find(x => x.Path == pg);
+                        var b = p.Blocks.Find(x => x.Id == id);
+
+                        BlockParam par = b.Parementers.ToList().Find(y => y.Name == param);
+                        if (par != null)
+                        {
+                            if (string.IsNullOrEmpty(val))
+                                par.Value = string.Empty;
+                            else
+                                par.Value = val;
+                        }
+                    }
+                }
+
+                Mess?.Invoke($"{i} -> {whs.UsedRange.Rows.Count}");
+            }
+
+            Mess?.Invoke(" --------------------------------------------");
+            Mess?.Invoke(" ====     EXCEL SAVING  FINISHED        =====");
+            Mess?.Invoke(" --------------------------------------------");
+
+            Marshal.FinalReleaseComObject(whs);
+            whs = null;
+        }
+
+        [DllImport("user32.dll")]
+        private static extern int GetWindowThreadProcessId(int hWnd, out int lpdwProcessId);
+
+        private Process GetExcelProcess(Exc.Application excelApp)
+        {
+            int id;
+            GetWindowThreadProcessId(excelApp.Hwnd, out id);
+            return Process.GetProcessById(id);
+        }
+
+        public async Task ImportExcel(string initPath)
+        {
+            wf.OpenFileDialog ofd = new wf.OpenFileDialog();
+            ofd.Filter = "Excel File|*.xlsx";
+            ofd.InitialDirectory = initPath;
+            if (ofd.ShowDialog() == wf.DialogResult.OK)
+            {
+                await Task.Run(() =>
+                {
+                    Mess?.Invoke(" --------------------------------------------");
+                    Mess?.Invoke(" ====     EXCEL SAVING  STARTED          ====");
+                    Mess?.Invoke(" --------------------------------------------");
+
+                    Exc.Application App = new Exc.Application() { DisplayAlerts = false };
+                    Exc.Workbook wrk = App.Workbooks.Open(ofd.FileName);
+                    Exc.Worksheet whs = wrk.Worksheets[1];
+
+                    Mess?.Invoke($"{1} -> {whs.UsedRange.Rows.Count}");
+
+                    for (int i = 2; i < whs.UsedRange.Rows.Count + 1; i++)
+                    {
+                        long id = long.Parse(whs.Cells[i, 1].Value?.ToString() ?? "0") ?? 0;
+                        string pg = whs.Cells[i, 2].Value?.ToString() ?? string.Empty;
+
+                        for (int j = 5, m = 0; j < whs.UsedRange.Columns.Count + 1; j++, m++)
+                        {
+                            string param = whs.Cells[1, j].Value?.ToString() ?? string.Empty;
+                            string val = whs.Cells[i, j].Value?.ToString() ?? string.Empty;
+
+                            if (!string.IsNullOrEmpty(param))
+                            {
+                                var p = PageInfoList.ToList().Find(x => x.Path == pg);
+                                var b = p.Blocks.Find(x => x.Id == id);
+
+                                BlockParam par = b.Parementers.ToList().Find(y => y.Name == param);
+                                if (par != null)
+                                {
+                                    if (string.IsNullOrEmpty(val))
+                                        par.Value = string.Empty;
+                                    else
+                                        par.Value = val;
+                                }
+                            }
+                        }
+
+                        Mess?.Invoke($"{i} -> {whs.UsedRange.Rows.Count}");
+                    }
+
+                    Mess?.Invoke(" --------------------------------------------");
+                    Mess?.Invoke(" ====     EXCEL SAVING  FINISHED         ====");
+                    Mess?.Invoke(" --------------------------------------------");
+
+                    Marshal.ReleaseComObject(whs);
+                    Marshal.ReleaseComObject(wrk);
+                    Marshal.ReleaseComObject(App);
+
+                    whs = null;
+                    wrk = null;
+                    App = null;
+                });
+            }
+        }
+
+        //[CommandMethod("DG_DEP")]
+        public static void DynamicBlockProps()
+        {
+            Document doc = Application.DocumentManager.MdiActiveDocument;
+            Database db = doc.Database;
+            Editor ed = doc.Editor;
+
+            PromptStringOptions pso = new PromptStringOptions("\nEnter dynamic block name or enter to select: ");
+
+            pso.AllowSpaces = true;
+            PromptResult pr = ed.GetString(pso);
+
+            if (pr.Status != PromptStatus.OK)
+                return;
+
+            Transaction tr = db.TransactionManager.StartTransaction();
+
+            using (tr)
+            {
+                BlockReference br = null;
+                // If a null string was entered allow entity selection
+
+                if (pr.StringResult == "")
+                {
+                    // Select a block reference
+
+                    PromptEntityOptions peo =
+                      new PromptEntityOptions(
+                        "\nSelect dynamic block reference: "
+                      );
+
+                    peo.SetRejectMessage("\nEntity is not a block.");
+                    peo.AddAllowedClass(typeof(BlockReference), false);
+
+                    PromptEntityResult per = ed.GetEntity(peo);
+
+                    if (per.Status != PromptStatus.OK)
+                        return;
+
+                    // Access the selected block reference
+
+                    br =
+                      tr.GetObject(
+                        per.ObjectId,
+                        OpenMode.ForRead
+                      ) as BlockReference;
+                }
+                else
+                {
+                    // Otherwise we look up the block by name
+                    BlockTable bt =
+                      tr.GetObject(
+                        db.BlockTableId,
+                        OpenMode.ForRead) as BlockTable;
+
+                    if (!bt.Has(pr.StringResult))
+                    {
+                        ed.WriteMessage(
+                           "\nBlock \"" + pr.StringResult + "\" does not exist."
+                         );
+                        return;
+                    }
+
+                    // Create a new block reference referring to the block
+                    br =
+                      new BlockReference(
+                        new Point3d(),
+                        bt[pr.StringResult]
+                      );
+                }
+
+                BlockTableRecord btr =
+                  (BlockTableRecord)tr.GetObject(
+                    br.DynamicBlockTableRecord,
+                    OpenMode.ForRead
+                  );
+
+                // Call our function to display the block properties
+                DisplayDynBlockProperties(ed, br, btr.Name);
+
+                // Committing is cheaper than aborting
+                tr.Commit();
+            }
+        }
+
+        private static void DisplayDynBlockProperties(Editor ed, BlockReference br, string name)
+        {
+            // Only continue is we have a valid dynamic block
+            if (br != null && br.IsDynamicBlock)
+            {
+                ed.WriteMessage(
+                  "\nDynamic properties for \"{0}\"\n",
+                  name
+                );
+
+                // Get the dynamic block's property collection
+                DynamicBlockReferencePropertyCollection pc =
+                  br.DynamicBlockReferencePropertyCollection;
+
+                // Loop through, getting the info for each property
+                foreach (DynamicBlockReferenceProperty prop in pc)
+                {
+                    // Start with the property name, type and description
+                    ed.WriteMessage(
+                      "\nProperty: \"{0}\" : {1}",
+                      prop.PropertyName,
+                      prop.UnitsType
+                    );
+
+                    if (prop.Description != "")
+                        ed.WriteMessage(
+                          "\n  Description: {0}",
+                          prop.Description
+                        );
+
+                    // Is it read-only?
+                    if (prop.ReadOnly)
+                        ed.WriteMessage(" (Read Only)");
+
+                    // Get the allowed values, if it's constrained
+                    bool first = true;
+                    foreach (object value in prop.GetAllowedValues())
+                    {
+                        ed.WriteMessage(
+                          (first ? "\n  Allowed values: [" : ", ")
+                        );
+
+                        ed.WriteMessage("\"{0}\"", value);
+                        first = false;
+                    }
+
+                    if (!first)
+                        ed.WriteMessage("]");
+
+                    // And finally the current value
+
+                    ed.WriteMessage(
+                      "\n  Current value: \"{0}\"\n",
+                      prop.Value
+                    );
+                }
+            }
+        }
+
+        [CommandMethod("dgTerm_Blk")]
+        public static void dgTerm()
+        {
+            Document doc = Application.DocumentManager.MdiActiveDocument;
+            Database db = doc.Database;
+            Editor ed = doc.Editor;
+
+            Transaction tr = db.TransactionManager.StartTransaction();
+            using (tr)
+            {
+                BlockReference blkRef = null;
+                // If a null string was entered allow entity selection
+
+                PromptEntityOptions peo = new PromptEntityOptions("\nSelect block reference: ");
+                peo.SetRejectMessage("\nEntity is not a block.");
+                peo.AddAllowedClass(typeof(BlockReference), false);
+
+                PromptEntityResult per = ed.GetEntity(peo);
+                if (per.Status != PromptStatus.OK)
+                    return;
+
+                // Access the selected block reference
+                blkRef = tr.GetObject(per.ObjectId, OpenMode.ForRead) as BlockReference;
+
+                int start = 1;
+                PromptStringOptions pso = new PromptStringOptions("\nGive Start Index");
+                pso.AllowSpaces = true;
+                PromptResult pr = ed.GetString(pso);
+                if (pr.Status != PromptStatus.OK)
+                {
+                    tr.Commit();
+                    return;
+                }
+
+                if (pr.StringResult != "")
+                    start = int.Parse(pr.StringResult);
+
+                BlockTableRecord btr = (BlockTableRecord)tr.GetObject(blkRef.DynamicBlockTableRecord, OpenMode.ForRead);
+                if (blkRef.BlockName.ToUpper() == "*MODEL_SPACE" && blkRef.Name != "WD_M") // Only those that are on the model
+                {
+                    AttributeCollection attCol = blkRef.AttributeCollection;
+                    List<AttributeReference> refList = new List<AttributeReference>();
+                    foreach (ObjectId attId in attCol)
+                    {
+                        AttributeReference attRef = (AttributeReference)tr.GetObject(attId, OpenMode.ForWrite);
+                        refList.Add(attRef);
+                    }
+
+                    // Searching data
+                    var el = (from x in refList where x.Tag.Split('-')[3].Contains("TERM") select x).OrderBy(x => x.Tag);
+                    foreach (var e in el)
+                    {
+                        e.TextString = $"{start}";
+                        start++;
+                    }
+                }
+
+                // Committing is cheaper than aborting
+                tr.Commit();
+            }
+        }
+
+        [CommandMethod("dgTerm_Txt")]
+        public static void dgTermTxt()
+        {
+            Document doc = Application.DocumentManager.MdiActiveDocument;
+            Database db = doc.Database;
+            Editor ed = doc.Editor;
+
+            Transaction tr = db.TransactionManager.StartTransaction();
+            using (tr)
+            {
+                TypedValue[] acTypValAr = new TypedValue[1];
+                acTypValAr.SetValue(new TypedValue((int)DxfCode.Text, "*"), 0);
+                var psr = ed.GetSelection(new SelectionFilter(acTypValAr));
+                if (psr.Status != PromptStatus.OK)
+                    return;
+
+                // Access the selected block reference
+                var textStyles = (TextStyleTable)tr.GetObject(db.TextStyleTableId, OpenMode.ForRead);
+
+                // Getting all IDs
+                var map = new Dictionary<ObjectId, string>();
+                foreach (dynamic id in psr.Value.GetObjectIds())
+                    map.Add(id, id.Layer);
+
+                // Sorting
+                var sorted = map.OrderBy(kv => kv.Value);
+                List<DBText> txts = new List<DBText>();
+                foreach (var i in sorted)
+                {
+                    var text = tr.GetObject(i.Key, OpenMode.ForWrite);
+                    txts.Add((DBText)text);
+                }
+
+                var grOrd = (from x in txts select x).OrderByDescending(x => x.Position.Y).ToList();
+
+                int start = 1;
+                string alt1 = "(+)";
+                string alt2 = "(-)";
+                PromptStringOptions pso = new PromptStringOptions("\nGive Pattern { Index:Desc1:Desc2 }:");
+                pso.AllowSpaces = true;
+                PromptResult pr = ed.GetString(pso);
+                if (pr.Status != PromptStatus.OK)
+                    return;
+
+                if (pr.StringResult != "")
+                {
+                    if (pr.StringResult.Split(':').Length == 3)
+                    {
+                        start = int.Parse(pr.StringResult.Split(':')[0]);
+                        alt1 = pr.StringResult.Split(':')[1];
+                        alt2 = pr.StringResult.Split(':')[2];
+                    }
+                    else
+                    {
+                        start = int.Parse(pr.StringResult.Split(':')[0]);
+                    }
+                }
+
+                bool alt = true;
+                bool alt_core = true;
+                for (int i = 0; i < grOrd.Count; i++)
+                {
+                    if (alt_core)
+                        grOrd[i].TextString = $"{start}{alt1}";
+                    else
+                        grOrd[i].TextString = $"{start}{alt2}";
+
+                    start++;
+
+                    alt = !alt;
+                    alt_core = !alt_core;
+                }
+
+                tr.Commit();
+            }
+        }
+
+        [CommandMethod("dgTerm_AltDesc_Txt")]
+        public static void dgTermAltDescTxt()
+        {
+            Document doc = Application.DocumentManager.MdiActiveDocument;
+            Database db = doc.Database;
+            Editor ed = doc.Editor;
+
+            Transaction tr = db.TransactionManager.StartTransaction();
+            using (tr)
+            {
+                TypedValue[] acTypValAr = new TypedValue[1];
+                acTypValAr.SetValue(new TypedValue((int)DxfCode.Text, "*"), 0);
+                var psr = ed.GetSelection(new SelectionFilter(acTypValAr));
+                if (psr.Status != PromptStatus.OK)
+                    return;
+
+                // Access the selected block reference
+                var textStyles = (TextStyleTable)tr.GetObject(db.TextStyleTableId, OpenMode.ForRead);
+
+                // Getting all IDs
+                var map = new Dictionary<ObjectId, string>();
+                foreach (dynamic id in psr.Value.GetObjectIds())
+                    map.Add(id, id.Layer);
+
+                // Sorting
+                var sorted = map.OrderBy(kv => kv.Value);
+                List<DBText> txts = new List<DBText>();
+                foreach (var i in sorted)
+                {
+                    var text = tr.GetObject(i.Key, OpenMode.ForWrite);
+                    txts.Add((DBText)text);
+                }
+
+                var grOrd = (from x in txts select x).OrderByDescending(x => x.Position.Y).ToList();
+
+                string alt1 = "(+)";
+                string alt2 = "(-)";
+                PromptStringOptions pso = new PromptStringOptions("\nGive Pattern { Desc1:Desc2 }:");
+                pso.AllowSpaces = true;
+                PromptResult pr = ed.GetString(pso);
+                if (pr.Status != PromptStatus.OK)
+                    return;
+
+                if (pr.StringResult != "")
+                {
+                    if (pr.StringResult.Split(':').Length == 2)
+                    {
+                        alt1 = pr.StringResult.Split(':')[0];
+                        alt2 = pr.StringResult.Split(':')[1];
+                    }
+                }
+
+                bool alt = true;
+                bool alt_core = true;
+                for (int i = 0; i < grOrd.Count; i++)
+                {
+                    if (alt_core)
+                        grOrd[i].TextString = $"{grOrd[i].TextString}{alt1}";
+                    else
+                        grOrd[i].TextString = $"{grOrd[i].TextString}{alt2}";
+
+                    alt = !alt;
+                    alt_core = !alt_core;
+                }
+
+                tr.Commit();
+            }
+        }
+
+        [CommandMethod("dgCable_Pair_Blk")]
+        public static void dgCablePair()
+        {
+            Document doc = Application.DocumentManager.MdiActiveDocument;
+            Database db = doc.Database;
+            Editor ed = doc.Editor;
+
+            Transaction tr = db.TransactionManager.StartTransaction();
+            using (tr)
+            {
+                BlockReference blkRef = null;
+                // If a null string was entered allow entity selection
+
+                PromptEntityOptions peo = new PromptEntityOptions("\nSelect block reference: ");
+                peo.SetRejectMessage("\nEntity is not a block.");
+                peo.AddAllowedClass(typeof(BlockReference), false);
+
+                PromptEntityResult per = ed.GetEntity(peo);
+                if (per.Status != PromptStatus.OK)
+                    return;
+
+                // Access the selected block reference
+                blkRef = tr.GetObject(per.ObjectId, OpenMode.ForRead) as BlockReference;
+
+                int start = 1;
+                string alt1 = "RD";
+                string alt2 = "WH";
+                PromptStringOptions pso = new PromptStringOptions("\nGive Path { Index:Color1:Color2 }:");
+                pso.AllowSpaces = true;
+                PromptResult pr = ed.GetString(pso);
+                if (pr.Status != PromptStatus.OK)
+                {
+                    tr.Commit();
+                    return;
+                }
+
+                if (pr.StringResult != "")
+                {
+                    if (pr.StringResult.Split(':').Length == 3)
+                    {
+                        start = int.Parse(pr.StringResult.Split(':')[0]);
+                        alt1 = pr.StringResult.Split(':')[1];
+                        alt2 = pr.StringResult.Split(':')[2];
+                    }
+                    else
+                    {
+                        start = int.Parse(pr.StringResult.Split(':')[0]);
+                    }
+                }
+
+                BlockTableRecord btr = (BlockTableRecord)tr.GetObject(blkRef.DynamicBlockTableRecord, OpenMode.ForRead);
+                if (blkRef.BlockName.ToUpper() == "*MODEL_SPACE" && blkRef.Name != "WD_M") // Only those that are on the model
+                {
+                    AttributeCollection attCol = blkRef.AttributeCollection;
+                    List<AttributeReference> refList = new List<AttributeReference>();
+                    foreach (ObjectId attId in attCol)
+                    {
+                        AttributeReference attRef = (AttributeReference)tr.GetObject(attId, OpenMode.ForWrite);
+                        refList.Add(attRef);
+                    }
+
+                    //Przeszukanie danyck
+                    var grLeft = (from x in refList where x.Tag.Split('-')[3].Contains("POS") && x.Tag.Split('-')[3].Substring(3, 2) == "00" select x)
+                        .OrderBy(x => x.Tag.Split('-')[3]).ToList();
+
+                    var grRight = (from x in refList where x.Tag.Split('-')[3].Contains("POS") && x.Tag.Split('-')[3].Substring(5, 2) == "00" select x)
+                        .OrderBy(x => x.Tag.Split('-')[3]).ToList();
+
+                    bool alt = true;
+                    bool alt_core = true;
+                    for (int i = 0; i < grLeft.Count; i++)
+                    {
+                        if (alt_core)
+                        {
+                            grLeft[i].TextString = $"{start}{alt1}";
+                            grRight[i].TextString = $"{start}{alt1}";
+                        }
+                        else
+                        {
+                            grLeft[i].TextString = $"{start}{alt2}";
+                            grRight[i].TextString = $"{start}{alt2}";
+                        }
+
+                        if (!alt)
+                            start++;
+
+                        alt = !alt;
+                        alt_core = !alt_core;
+                    }
+                }
+
+                // Committing is cheaper than aborting
+                tr.Commit();
+            }
+        }
+
+        [CommandMethod("dgCable_Pair_Txt")]
+        public static void dgCable_Pair_Txt()
+        {
+            Document doc = Application.DocumentManager.MdiActiveDocument;
+            Database db = doc.Database;
+            Editor ed = doc.Editor;
+
+            Transaction tr = db.TransactionManager.StartTransaction();
+            using (tr)
+            {
+                TypedValue[] acTypValAr = new TypedValue[1];
+                acTypValAr.SetValue(new TypedValue((int)DxfCode.Text, "*"), 0);
+                var psr = ed.GetSelection(new SelectionFilter(acTypValAr));
+                if (psr.Status != PromptStatus.OK)
+                    return;
+
+                // Access the selected block reference
+                var textStyles = (TextStyleTable)tr.GetObject(db.TextStyleTableId, OpenMode.ForRead);
+
+                // Getting all IDs
+                var map = new Dictionary<ObjectId, string>();
+                foreach (dynamic id in psr.Value.GetObjectIds())
+                    map.Add(id, id.Layer);
+
+                // Sorting
+                var sorted = map.OrderBy(kv => kv.Value);
+                List<DBText> txts = new List<DBText>();
+                foreach (var i in sorted)
+                {
+                    var text = tr.GetObject(i.Key, OpenMode.ForWrite);
+                    txts.Add((DBText)text);
+                }
+
+                // Calculating division boundary
+                double max = txts.Max(x => x.Position.X);
+                double min = txts.Min(x => x.Position.X);
+                double edge = min + ((max - min) / 2.0);
+
+                var grLeft = (from x in txts where x.Position.X < edge select x).OrderByDescending(x => x.Position.Y).ToList();
+                var grRight = (from x in txts where x.Position.X > edge select x).OrderByDescending(x => x.Position.Y).ToList();
+
+                int start = 1;
+                string alt1 = "RD";
+                string alt2 = "WH";
+                PromptStringOptions pso = new PromptStringOptions("\nGive Path { Index:Color1:Color2 }:");
+                pso.AllowSpaces = true;
+                PromptResult pr = ed.GetString(pso);
+                if (pr.Status != PromptStatus.OK)
+                {
+                    tr.Commit();
+                    return;
+                }
+
+                if (pr.StringResult != "")
+                {
+                    if (pr.StringResult.Split(':').Length == 3)
+                    {
+                        start = int.Parse(pr.StringResult.Split(':')[0]);
+                        alt1 = pr.StringResult.Split(':')[1];
+                        alt2 = pr.StringResult.Split(':')[2];
+                    }
+                    else
+                    {
+                        start = int.Parse(pr.StringResult.Split(':')[0]);
+                    }
+                }
+
+                bool alt = true;
+                bool alt_core = true;
+                for (int i = 0; i < grLeft.Count; i++)
+                {
+                    if (alt_core)
+                    {
+                        grLeft[i].TextString = $"{start}{alt1}";
+                        grRight[i].TextString = $"{start}{alt1}";
+                    }
+                    else
+                    {
+                        grLeft[i].TextString = $"{start}{alt2}";
+                        grRight[i].TextString = $"{start}{alt2}";
+                    }
+
+                    if (!alt)
+                        start++;
+
+                    alt = !alt;
+                    alt_core = !alt_core;
+                }
+
+                tr.Commit();
+            }
+        }
+
+        [CommandMethod("dgCable_Num_Txt")]
+        public static void dgCableNumTxt()
+        {
+            Document doc = Application.DocumentManager.MdiActiveDocument;
+            Database db = doc.Database;
+            Editor ed = doc.Editor;
+
+            Transaction tr = db.TransactionManager.StartTransaction();
+            using (tr)
+            {
+                TypedValue[] acTypValAr = new TypedValue[1];
+                acTypValAr.SetValue(new TypedValue((int)DxfCode.Text, "*"), 0);
+                var psr = ed.GetSelection(new SelectionFilter(acTypValAr));
+                if (psr.Status != PromptStatus.OK)
+                    return;
+
+                // Access the selected block reference
+                var textStyles = (TextStyleTable)tr.GetObject(db.TextStyleTableId, OpenMode.ForRead);
+
+                // Getting all IDs
+                var map = new Dictionary<ObjectId, string>();
+                foreach (dynamic id in psr.Value.GetObjectIds())
+                    map.Add(id, id.Layer);
+
+                // Sorting
+                var sorted = map.OrderBy(kv => kv.Value);
+                List<DBText> txts = new List<DBText>();
+                foreach (var i in sorted)
+                {
+                    var text = tr.GetObject(i.Key, OpenMode.ForWrite);
+                    txts.Add((DBText)text);
+                }
+
+                // Calculating division boundary
+                double max = txts.Max(x => x.Position.X);
+                double min = txts.Min(x => x.Position.X);
+                double edge = min + ((max - min) / 2.0);
+
+                var grLeft = (from x in txts where x.Position.X < edge select x).OrderByDescending(x => x.Position.Y).ToList();
+                var grRight = (from x in txts where x.Position.X > edge select x).OrderByDescending(x => x.Position.Y).ToList();
+
+                int start = 1;
+                PromptStringOptions pso = new PromptStringOptions("\nGive Path { Index:}:");
+                pso.AllowSpaces = true;
+                PromptResult pr = ed.GetString(pso);
+                if (pr.Status != PromptStatus.OK)
+                {
+                    tr.Commit();
+                    return;
+                }
+
+                if (pr.StringResult != "")
+                    start = int.Parse(pr.StringResult);
+
+                for (int i = 0; i < grLeft.Count; i++)
+                {
+                    grLeft[i].TextString = $"{start}";
+                    grRight[i].TextString = $"{start}";
+                    start++;
+                }
+
+                tr.Commit();
+            }
+        }
+    }
+
+    [Serializable]
+    public class BlockParam
+    {
+        public BlockParam()
+        {
+        }
+
+        public string Name { get; set; }
+        public string Value { get; set; }
+
+        private ChangesKind Change_;
+
+        public ChangesKind Change
+        {
+            get { return Change_; }
+            set { Change_ = value; }
+        }
+    }
+
+    [Serializable]
+    public class BlocksInfo
+    {
+        public BlocksInfo()
+        {
+        }
+
+        public string Tag
+        {
+            get
+            {
+                return GetValue("TAG");
+            }
+        }
+
+        public string Name { get; set; }
+        public string Sub { get; set; }
+        public long Id { get; set; }
+
+        public int Sh
+        {
+            get
+            {
+                return 0;
+            }
+        }
+
+        public double X { get; set; }
+        public double Y { get; set; }
+        public string PagePath { get; set; }
+
+        public string GetValue(string name)
+        {
+            if (name == "ID")
+                return Id.ToString();
+            else if (name == "BLOCK_NAME")
+                return Name;
+            else if (name == "BL_SH")
+                return Sh.ToString();
+            else if (name == "BL_PATH")
+                return PagePath;
+            else if (name == "KKS")
+                return Parameters_?.ToList()?.Find(x => x.Name.Contains("TAG"))?.Value ?? "???";
+            else if (name == "CORD_X")
+                return X.ToString("F2");
+            else if (name == "CORD_Y")
+                return Y.ToString("F2");
+            else if (name == "SCOPE")
+                return GetScope();
+            else if (name == "FOLDER")
+                return Sub;
+
+            return Parameters_.ToList().Find(x => x.Name == name)?.Value ?? "...";
+        }
+
+        public string GetValueAprox(string name)
+        {
+            if (name.Contains("ID"))
+                return Id.ToString();
+            else if (name.Contains("BLOCK_NAME"))
+                return Name;
+            else if (name.Contains("BL_SH"))
+                return Sh.ToString();
+            else if (name.Contains("BL_PATH"))
+                return PagePath;
+            else if (name.Contains("KKS"))
+                return Parameters_?.ToList()?.Find(x => x.Name.Contains("TAG"))?.Value ?? "???";
+            else if (name.Contains("CORD_X"))
+                return X.ToString("F2");
+            else if (name.Contains("CORD_Y"))
+                return Y.ToString("F2");
+            else if (name.Contains("SCOPE"))
+                return GetScope();
+            else if (name.Contains("FOLDER"))
+                return Sub;
+            else if (name.Contains("PATH"))
+            {
+                if (this.Name.Split('-')[0] == "SIG")
+                {
+                    string from = Parameters_.ToList().Find(x => x.Name.Contains("SIGNAL_FROM"))?.Value ?? "...";
+                    string to = Parameters_.ToList().Find(x => x.Name.Contains("SIGNAL_TO"))?.Value ?? "...";
+                    return $"{from}<=>{to}";
+                }
+                else if (this.Name.Split('-')[0] == "CAB")
+                {
+                    string from = Parameters_.ToList().Find(x => x.Name.Contains("CABLE_FROM"))?.Value ?? "...";
+                    string to = Parameters_.ToList().Find(x => x.Name.Contains("CABLE_TO"))?.Value ?? "...";
+                    return $"{from}<=>{to}";
+                }
+                else
+                {
+                    return "...";
+                }
+            }
+
+            return Parameters_.ToList().Find(x => x.Name.Contains(name))?.Value ?? "...";
+        }
+
+        public string GetScope()
+        {
+            string level = Name?.Split('-')?[1] ?? "???";
+            return Parameters_?.ToList()?.Find(x => x.Name == $"TAB-{level}-10-SCOPE")?.Value ?? "???";
+        }
+
+        public List<BlockParam> GetApproxParamList(string name)
+        {
+            return Parameters_.Where(x => x.Name.Contains(name))?.ToList();
+        }
+
+        public Guid GetRevId()
+        {
+            if (Parementers.ToList().Exists(x => x.Name == "PAGE-00-00-REV_ID"))
+            {
+                Guid g;
+                if (Guid.TryParse(GetValue("PAGE-00-00-REV_ID"), out g))
+                    return g;
+                else
+                    return Guid.Empty;
+            }
+            else return Guid.Empty;
+        }
+
+        public void SetParam(string pr, string val)
+        {
+            if (Parementers.ToList().Exists(x => x.Name == pr) && !string.IsNullOrEmpty(val))
+                Parementers.ToList().Find(x => x.Name == pr).Value = val;
+        }
+
+        public BlockParam GetParamObj(string s)
+        {
+            if (s == "BL_SH")
+            {
+                return new BlockParam() { Name = "BL_SH", Value = Sh.ToString() };
+            }
+            else if (s == "SCOPE")
+            {
+                string level = Name?.Split('-')?[1] ?? "???";
+                return Parameters_?.ToList()?.Find(x => x.Name == $"TAB-{level}-10-SCOPE") ?? new BlockParam() { Change = ChangesKind.NotChanged, Name = "NA", Value = "NA" };
+            }
+            else if (Parementers.ToList().Exists(x => x.Name == s))
+            {
+                return Parementers.ToList().Find(x => x.Name == s);
+            }
+            else return new BlockParam() { Name = "NA", Value = "NA" };
+        }
+
+        public string FileName { get; set; }
+        public string FileDesc { get; set; }
+
+        public void ResetRevParam()
+        {
+            foreach (var x in Parameters_)
+                x.Change = ChangesKind.NotChanged;
+        }
+
+        private ChangesKind Change_;
+
+        public ChangesKind Change
+        {
+            get { return Change_; }
+            set { Change_ = value; }
+        }
+
+        private ObservableCollection<BlockParam> Parameters_ = new ObservableCollection<BlockParam>();
+
+        public ObservableCollection<BlockParam> Parementers
+        {
+            get { return Parameters_; }
+            set { Parameters_ = value; }
+        }
+
+        public override string ToString()
+        {
+            return Name + " \\ " + GetValueAprox("TAG");
+        }
+    }
+
+    [Serializable]
+    public class PageInfo
+    {
+        public string Path { get; set; }
+        public string Sub { get; set; }
+        public Boolean IsChanged { get; set; }
+
+        public string GetPage()
+        {
+            if (Blocks.Count > 0)
+            {
+                return Blocks.First().Sh.ToString();
+            }
+            else
+            {
+                return "???";
+            }
+        }
+
+        public string GetFileName()
+        {
+            if (!string.IsNullOrEmpty(Path))
+                return System.IO.Path.GetFileNameWithoutExtension(Path);
+            else
+                return "???";
+        }
+
+        public string GetFileDesc()
+        {
+            return "???";
+        }
+
+        private ChangesKind Change_;
+
+        public ChangesKind Change
+        {
+            get { return Change_; }
+            set { Change_ = value; }
+        }
+
+        private List<BlocksInfo> Blocks_ = new List<BlocksInfo>();
+
+        public List<BlocksInfo> Blocks
+        {
+            get { return Blocks_; }
+            set { Blocks_ = value; }
+        }
+
+        public override string ToString()
+        {
+            return GetPage();
+        }
+    }
+
+    public interface IMessageNotify
+    {
+        event EventHandler Message;
+    }
+
+    public enum ChangesKind
+    { NotChanged, Deleted, Added, Modfied }
+
+    public class RelayCommand : ICommand
+    {
+        #region Fields
+
+        private readonly Action<object> _execute;
+        private readonly Predicate<object> _canExecute;
+
+        #endregion Fields
+
+        #region Constructors
+
+        public RelayCommand(Action<object> execute)
+        : this(execute, null)
+        {
+        }
+
+        public RelayCommand(Action<object> execute, Predicate<object> canExecute)
+        {
+            if (execute == null)
+                throw new ArgumentNullException("execute");
+
+            _execute = execute;
+            _canExecute = canExecute;
+        }
+
+        #endregion Constructors
+
+        #region ICommand Members
+
+        public bool CanExecute(object parameter)
+        {
+            return _canExecute == null ? true : _canExecute(parameter);
+        }
+
+        public event EventHandler CanExecuteChanged
+        {
+            add { CommandManager.RequerySuggested += value; }
+            remove { CommandManager.RequerySuggested -= value; }
+        }
+
+        public void Execute(object parameter)
+        {
+            _execute(parameter);
+        }
+
+        #endregion ICommand Members
+    }
+
+    [Serializable]
+    public class Sett : Cm.INotifyPropertyChanged
+    {
+        public Sett()
+        {
+        }
+
+        public Sett(BlocksInfo el)
+        {
+            Name = el.Name;
+            Enable = true;
+
+            Params_ = new ObservableCollection<ParamSett>();
+            foreach (var p in el.Parementers.OrderBy(x => x.Name))
+                Params.Add(new ParamSett() { Name = p.Name, Enable = true });
+        }
+
+        private string Name_;
+
+        public string Name
+        {
+            get { return Name_; }
+            set
+            {
+                Name_ = value;
+                NotifyPropertyChanged();
+            }
+        }
+
+        private Boolean Enable_;
+
+        public Boolean Enable
+        {
+            get { return Enable_; }
+            set
+            {
+                Enable_ = value;
+
+                if (Params?.Count > 0)
+                {
+                    foreach (var p in Params)
+                        p.Enable = value;
+                }
+
+                NotifyPropertyChanged();
+            }
+        }
+
+        private ObservableCollection<ParamSett> Params_;
+
+        public ObservableCollection<ParamSett> Params
+        {
+            get { return Params_; }
+            set { Params_ = value; }
+        }
+
+        public event Cm.PropertyChangedEventHandler PropertyChanged;
+
+        private void NotifyPropertyChanged([CallerMemberName] String propertyName = "")
+        {
+            PropertyChanged?.Invoke(this, new Cm.PropertyChangedEventArgs(propertyName));
+        }
+    }
+
+    [Serializable]
+    public class ParamSett : Cm.INotifyPropertyChanged
+    {
+        private string Name_;
+
+        public string Name
+        {
+            get { return Name_; }
+            set
+            {
+                Name_ = value;
+                NotifyPropertyChanged();
+            }
+        }
+
+        private Boolean Enable_;
+
+        public Boolean Enable
+        {
+            get { return Enable_; }
+            set
+            {
+                Enable_ = value;
+                NotifyPropertyChanged();
+            }
+        }
+
+        public event Cm.PropertyChangedEventHandler PropertyChanged;
+
+        private void NotifyPropertyChanged([CallerMemberName] String propertyName = "")
+        {
+            PropertyChanged?.Invoke(this, new Cm.PropertyChangedEventArgs(propertyName));
+        }
+    }
+}

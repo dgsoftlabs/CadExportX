@@ -1,0 +1,167 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <OutputType>Library</OutputType>
+    <RootNamespace>ModelSpace</RootNamespace>
+    <AssemblyName>CadExportX</AssemblyName>
+    <UseWindowsForms>true</UseWindowsForms>
+    <UseWPF>true</UseWPF>
+    <ImportWindowsDesktopTargets>true</ImportWindowsDesktopTargets>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <AssemblyOriginatorKeyFile />
+  </PropertyGroup>
+  
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <UseVSHostingProcess>true</UseVSHostingProcess>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+  </PropertyGroup>
+  
+  <!-- Debug configuration for AutoCAD -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <StartAction>Program</StartAction>
+    <StartProgram>C:\Program Files\Autodesk\AutoCAD 2026\acad.exe</StartProgram>
+    <StartArguments>/b "$(ProjectDir)DebugLoad.scr"</StartArguments>
+    <StartWorkingDirectory>$(ProjectDir)</StartWorkingDirectory>
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <PackageReference Include="AutoCAD.NET" Version="25.1.0" />
+    <PackageReference Include="AutoCAD.NET.Core" Version="25.1.0" />
+    <PackageReference Include="AutoCAD.NET.Model" Version="25.1.0" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <Resource Include="Image\word.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Image\outlook.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Image\inspector.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Image\database.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Image\cable.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Image\fre_rev.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Image\compare.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Image\save.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Image\load.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Image\instruments.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Image\signals.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Image\update.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Image\pages.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Image\load_excel.png" />
+    <Resource Include="Image\load_rev.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Image\terms.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Image\head.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Image\num.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Image\search.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Image\kks.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Image\guid.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Image\repgen.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Image\cancel.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Image\circuit.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Image\purge.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Image\resetguid.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Image\ge_check.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Image\man.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <COMReference Include="Microsoft.Office.Core">
+      <Guid>{2DF8D04C-5BFA-101B-BDE5-00AA0044DE52}</Guid>
+      <VersionMajor>2</VersionMajor>
+      <VersionMinor>8</VersionMinor>
+      <Lcid>0</Lcid>
+      <WrapperTool>primary</WrapperTool>
+      <Isolated>False</Isolated>
+      <EmbedInteropTypes>True</EmbedInteropTypes>
+    </COMReference>
+    <COMReference Include="Microsoft.Office.Interop.Excel">
+      <Guid>{00020813-0000-0000-C000-000000000046}</Guid>
+      <VersionMajor>1</VersionMajor>
+      <VersionMinor>9</VersionMinor>
+      <Lcid>0</Lcid>
+      <WrapperTool>primary</WrapperTool>
+      <Isolated>False</Isolated>
+      <EmbedInteropTypes>True</EmbedInteropTypes>
+    </COMReference>
+    <COMReference Include="Microsoft.Office.Interop.Word">
+      <Guid>{00020905-0000-0000-C000-000000000046}</Guid>
+      <VersionMajor>8</VersionMajor>
+      <VersionMinor>7</VersionMinor>
+      <Lcid>0</Lcid>
+      <WrapperTool>primary</WrapperTool>
+      <Isolated>False</Isolated>
+      <EmbedInteropTypes>True</EmbedInteropTypes>
+    </COMReference>
+    <COMReference Include="VBIDE">
+      <Guid>{0002E157-0000-0000-C000-000000000046}</Guid>
+      <VersionMajor>5</VersionMajor>
+      <VersionMinor>3</VersionMinor>
+      <Lcid>0</Lcid>
+      <WrapperTool>primary</WrapperTool>
+      <Isolated>False</Isolated>
+      <EmbedInteropTypes>True</EmbedInteropTypes>
+    </COMReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Image\group.png" />
+    <Resource Include="Image\project.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Image\param.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Image\block.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Image\logo.png" />
+  </ItemGroup>
+</Project>
