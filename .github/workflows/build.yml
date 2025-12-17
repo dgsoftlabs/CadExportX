@@ -22,12 +22,16 @@ jobs:
     
     - name: Setup MSBuild
       uses: microsoft/setup-msbuild@v2
-
-    - name: Restore dependencies
-      run: msbuild /t:Restore /p:Configuration=Release
-
+      
+    - name: Add NuGet source
+      run: nuget sources add -name nuget.org -source https://api.nuget.org/v3/index.json
+      continue-on-error: true
+        
+    - name: Restore NuGet packages
+      run: nuget restore
+    
     - name: Build
-      run: msbuild /p:Configuration=Release /p:Platform="Any CPU"
+      run: msbuild /p:Configuration=Release /p:Platform="Any CPU" /p:ResolveComReferenceSilent=true /p:EmbedInteropTypes=true
       
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
