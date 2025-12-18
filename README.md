@@ -83,6 +83,8 @@ Specialized commands for common tasks:
 #### 6. **DWG Inspector**
 Built-in tool for viewing and analyzing dynamic block properties without opening the drawing.
 
+![DWG Inspector Interface](CadExportXInspector.png)
+
 ### Typical Workflow
 
 ```
