@@ -498,7 +498,7 @@ namespace ModelSpace
 
             Exc.Application App = new Exc.Application() { DisplayAlerts = false };
             Exc.Workbook wrk = App.Workbooks.Add(Exc.XlWBATemplate.xlWBATWorksheet);
-            Exc.Worksheet wsh = wrk.Worksheets[1];
+            Exc.Worksheet wsh = (Exc.Worksheet)wrk.Worksheets[1];
             wsh.Name = "ALL";
 
             await Task.Run(() =>
@@ -517,7 +517,7 @@ namespace ModelSpace
        int p = 1;
        foreach (var a in buff)
        {
-           wsh.Cells[1, p].Value = a;
+           ((Exc.Range)wsh.Cells[1, p]).Value2 = a;
            p++;
        }
 
@@ -533,8 +533,8 @@ namespace ModelSpace
                int j = 1;
                foreach (var t in buff)
                {
-                   wsh.Cells[i, j].Value = bl.GetValue(t);
-                   wsh.Cells[i, j].HorizontalAlignment = Exc.XlHAlign.xlHAlignCenter;
+                   ((Exc.Range)wsh.Cells[i, j]).Value2 = bl.GetValue(t);
+                   ((Exc.Range)wsh.Cells[i, j]).HorizontalAlignment = Exc.XlHAlign.xlHAlignCenter;
                    j++;
                }
 
@@ -553,13 +553,13 @@ namespace ModelSpace
             Mess?.Invoke(" ==== EXCEL SG. LIST GENERATION FINISHED ====");
             Mess?.Invoke(" --------------------------------------------");
 
-            wsh.Columns[1].Interior.Color = System.Drawing.ColorTranslator.ToOle(System.Drawing.Color.LightGray);
-            wsh.Columns[2].Interior.Color = System.Drawing.ColorTranslator.ToOle(System.Drawing.Color.LightGray);
-            wsh.Columns[3].Interior.Color = System.Drawing.ColorTranslator.ToOle(System.Drawing.Color.LightGray);
+            ((Exc.Range)wsh.Columns[1]).Interior.Color = System.Drawing.ColorTranslator.ToOle(System.Drawing.Color.LightGray);
+            ((Exc.Range)wsh.Columns[2]).Interior.Color = System.Drawing.ColorTranslator.ToOle(System.Drawing.Color.LightGray);
+            ((Exc.Range)wsh.Columns[3]).Interior.Color = System.Drawing.ColorTranslator.ToOle(System.Drawing.Color.LightGray);
 
             App.Visible = true;
 
-            wsh.Cells[2, 4].Select();
+            ((Exc.Range)wsh.Cells[2, 4]).Select();
             wsh.Application.ActiveWindow.FreezePanes = true;
 
             wsh.EnableAutoFilter = true;
@@ -596,18 +596,18 @@ namespace ModelSpace
             Mess?.Invoke("  ====     EXCEL SAVING  STARTED         ====");
             Mess?.Invoke(" --------------------------------------------");
 
-            Exc.Worksheet whs = Wb.Worksheets[1];
+            Exc.Worksheet whs = (Exc.Worksheet)Wb.Worksheets[1];
             Mess?.Invoke($"{1} -> {whs.UsedRange.Rows.Count}");
 
             for (int i = 2; i < whs.UsedRange.Rows.Count + 1; i++)
             {
-                long id = long.Parse(whs.Cells[i, 1].Value?.ToString() ?? "0") ?? 0;
-                string pg = whs.Cells[i, 2].Value?.ToString() ?? string.Empty;
+                long id = long.Parse(((Exc.Range)whs.Cells[i, 1]).Value2?.ToString() ?? "0");
+                string pg = ((Exc.Range)whs.Cells[i, 2]).Value2?.ToString() ?? string.Empty;
 
                 for (int j = 5; j < whs.UsedRange.Columns.Count + 1; j++)
                 {
-                    string param = whs.Cells[1, j].Value?.ToString() ?? string.Empty;
-                    string val = whs.Cells[i, j].Value?.ToString() ?? string.Empty;
+                    string param = ((Exc.Range)whs.Cells[1, j]).Value2?.ToString() ?? string.Empty;
+                    string val = ((Exc.Range)whs.Cells[i, j]).Value2?.ToString() ?? string.Empty;
 
                     if (!string.IsNullOrEmpty(param))
                     {
@@ -661,19 +661,19 @@ namespace ModelSpace
 
                     Exc.Application App = new Exc.Application() { DisplayAlerts = false };
                     Exc.Workbook wrk = App.Workbooks.Open(ofd.FileName);
-                    Exc.Worksheet whs = wrk.Worksheets[1];
+                    Exc.Worksheet whs = (Exc.Worksheet)wrk.Worksheets[1];
 
                     Mess?.Invoke($"{1} -> {whs.UsedRange.Rows.Count}");
 
                     for (int i = 2; i < whs.UsedRange.Rows.Count + 1; i++)
                     {
-                        long id = long.Parse(whs.Cells[i, 1].Value?.ToString() ?? "0") ?? 0;
-                        string pg = whs.Cells[i, 2].Value?.ToString() ?? string.Empty;
+                        long id = long.Parse(((Exc.Range)whs.Cells[i, 1]).Value2?.ToString() ?? "0");
+                        string pg = ((Exc.Range)whs.Cells[i, 2]).Value2?.ToString() ?? string.Empty;
 
                         for (int j = 5, m = 0; j < whs.UsedRange.Columns.Count + 1; j++, m++)
                         {
-                            string param = whs.Cells[1, j].Value?.ToString() ?? string.Empty;
-                            string val = whs.Cells[i, j].Value?.ToString() ?? string.Empty;
+                            string param = ((Exc.Range)whs.Cells[1, j]).Value2?.ToString() ?? string.Empty;
+                            string val = ((Exc.Range)whs.Cells[i, j]).Value2?.ToString() ?? string.Empty;
 
                             if (!string.IsNullOrEmpty(param))
                             {
