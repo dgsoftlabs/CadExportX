@@ -8,13 +8,13 @@ using Cm = System.ComponentModel;
 namespace ModelSpace
 {
     [Serializable]
-    public class Sett : Cm.INotifyPropertyChanged
+    public class Settings : Cm.INotifyPropertyChanged
     {
-        public Sett()
+        public Settings()
         {
         }
 
-        public Sett(BlocksInfo el)
+        public Settings(BlocksInfo el)
         {
             Name = el.Name;
             Enable = true;

@@ -39,7 +39,7 @@ namespace ModelSpace
 
         public ObservableCollection<PageInfo> PageInfoList { get; set; }
 
-        public ObservableCollection<Sett> SettList { get; set; }
+        public ObservableCollection<Settings> SettList { get; set; }
 
         // Observations
         private List<string> PathList = new List<string>();
@@ -65,7 +65,7 @@ namespace ModelSpace
                 System.Diagnostics.Debug.WriteLine("=== TK Helper: syncCtrl initialized ===");
 
                 PageInfoList = new ObservableCollection<PageInfo>();
-                SettList = new ObservableCollection<Sett>();
+                SettList = new ObservableCollection<Settings>();
 
                 System.Diagnostics.Debug.WriteLine("=== TK Helper: Creating ViewModel ===");
                 ViewModel = new ACadViewModel(this);
@@ -234,7 +234,7 @@ namespace ModelSpace
 
                    SettList.Clear();
                    foreach (var el in PageInfoList.SelectMany(x => x.Blocks).GroupBy(x => x.Name).Select(x => x.First()).OrderBy(x => x.Name))
-                       SettList.Add(new Sett(el));
+                       SettList.Add(new Settings(el));
 
                    Mess?.Invoke(" Database was saved!");
                });
@@ -447,7 +447,7 @@ namespace ModelSpace
 
                     SettList.Clear();
                     foreach (var el in PageInfoList.SelectMany(x => x.Blocks).GroupBy(x => x.Name).Select(x => x.First()))
-                        SettList.Add(new Sett(el));
+                        SettList.Add(new Settings(el));
                 }
             }
             catch (System.Exception Ex)

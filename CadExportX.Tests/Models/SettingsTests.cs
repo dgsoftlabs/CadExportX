@@ -2,7 +2,7 @@
 
 namespace CadExportX.Tests.Models
 {
-    public class SettTests
+    public class SettingsTests
     {
         [Fact]
         public void Constructor_InitializesWithBlockInfo()
@@ -11,7 +11,7 @@ namespace CadExportX.Tests.Models
             block.Parementers.Add(new BlockParam { Name = "TAG", Value = "KKS" });
             block.Parementers.Add(new BlockParam { Name = "DESC", Value = "Description" });
 
-            var sett = new Sett(block);
+            var sett = new Settings(block);
 
             Assert.Equal("TestBlock", sett.Name);
             Assert.True(sett.Enable);
@@ -25,7 +25,7 @@ namespace CadExportX.Tests.Models
             block.Parementers.Add(new BlockParam { Name = "TAG", Value = "KKS" });
             block.Parementers.Add(new BlockParam { Name = "DESC", Value = "Description" });
 
-            var sett = new Sett(block);
+            var sett = new Settings(block);
 
             Assert.True(sett.Enable);
             Assert.True(sett.Params.All(p => p.Enable));
@@ -42,7 +42,7 @@ namespace CadExportX.Tests.Models
         [Fact]
         public void Name_CanBeSetAndRetrieved()
         {
-            var sett = new Sett { Name = "TestName" };
+            var sett = new Settings { Name = "TestName" };
 
             Assert.Equal("TestName", sett.Name);
         }
@@ -55,7 +55,7 @@ namespace CadExportX.Tests.Models
             block.Parementers.Add(new BlockParam { Name = "ALPHA", Value = "A" });
             block.Parementers.Add(new BlockParam { Name = "BETA", Value = "B" });
 
-            var sett = new Sett(block);
+            var sett = new Settings(block);
 
             Assert.Equal("ALPHA", sett.Params[0].Name);
             Assert.Equal("BETA", sett.Params[1].Name);
@@ -65,11 +65,11 @@ namespace CadExportX.Tests.Models
         [Fact]
         public void PropertyChanged_RaisedOnNameChange()
         {
-            var sett = new Sett();
+            var sett = new Settings();
             bool wasRaised = false;
             sett.PropertyChanged += (s, e) =>
               {
-                  if (e.PropertyName == nameof(Sett.Name))
+                  if (e.PropertyName == nameof(Settings.Name))
                       wasRaised = true;
               };
 
@@ -81,11 +81,11 @@ namespace CadExportX.Tests.Models
         [Fact]
         public void PropertyChanged_RaisedOnEnableChange()
         {
-            var sett = new Sett();
+            var sett = new Settings();
             bool wasRaised = false;
             sett.PropertyChanged += (s, e) =>
                       {
-                          if (e.PropertyName == nameof(Sett.Enable))
+                          if (e.PropertyName == nameof(Settings.Enable))
                               wasRaised = true;
                       };
 

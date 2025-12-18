@@ -132,9 +132,9 @@ namespace ModelSpace
             return Process.GetProcessById(id);
         }
 
-        // === OTHER ===
+        // === UTILITY COMMANDS ===
 
-        #region InspectorShow
+        #region Show Inspector
 
         private RelayCommand _InspectorShowCommand = null;
 
@@ -162,9 +162,9 @@ namespace ModelSpace
             dwg.ShowDialog();
         }
 
-        #endregion InspectorShow
+        #endregion Show Inspector
 
-        #region ProjectDir
+        #region Select Project Directory
 
         private RelayCommand _ProjectDirCommand = null;
 
@@ -211,15 +211,15 @@ namespace ModelSpace
                     Directory.CreateDirectory(Plg.LogsFolderPath);
 
                 File.WriteAllText($"{Plg.LogsFolderPath}Log_{DateTime.Now.ToString(Plg.LogFormat)}.txt"
-                    , Ex.StackTrace);
+                  , Ex.StackTrace);
 
                 Plg.SendInformation(Ex.Message);
             }
         }
 
-        #endregion ProjectDir
+        #endregion Select Project Directory
 
-        #region ExploreProj
+        #region Open Project Folder
 
         private RelayCommand _ExploreProjCommand = null;
 
@@ -247,11 +247,11 @@ namespace ModelSpace
                 System.Diagnostics.Process.Start(ProjDir);
         }
 
-        #endregion ExploreProj
+        #endregion Open Project Folder
 
-        // === BASIC COMMANDS ===
+        // === PRIMARY OPERATIONS ===
 
-        #region ReadAllDrgs
+        #region Read All Drawings
 
         private RelayCommand _ReadAllDrgsCommand = null;
 
@@ -278,9 +278,9 @@ namespace ModelSpace
             await RunBusyOperation(() => Plg.DatabaseUpdate(ProjDir));
         }
 
-        #endregion ReadAllDrgs
+        #endregion Read All Drawings
 
-        #region SaveAllDrvs
+        #region Save All Drawings
 
         private RelayCommand _SaveAllDrvsCommand = null;
 
@@ -304,13 +304,13 @@ namespace ModelSpace
 
         private async void OnSaveAllDrvs(object parameter)
         {
-            if (MessageBox.Show("Do you want to change drawings", "Attention", MessageBoxButton.OKCancel, MessageBoxImage.Warning) == MessageBoxResult.OK)
+            if (MessageBox.Show("Do you want to apply changes to the drawings?", "Attention", MessageBoxButton.OKCancel, MessageBoxImage.Warning) == MessageBoxResult.OK)
                 await RunBusyOperation(() => Plg.DownloadChanges());
         }
 
-        #endregion SaveAllDrvs
+        #endregion Save All Drawings
 
-        #region ExportPartExclSig
+        #region Export Parts to Excel
 
         private RelayCommand _ExportPartExclSigCommand = null;
 
@@ -337,9 +337,9 @@ namespace ModelSpace
             await RunBusyOperation(() => Plg.GenerateExcelList(this));
         }
 
-        #endregion ExportPartExclSig
+        #endregion Export Parts to Excel
 
-        #region ImportExcel
+        #region Import from Excel
 
         private RelayCommand _ImportExcelCommand = null;
 
@@ -366,9 +366,9 @@ namespace ModelSpace
             await RunBusyOperation(() => Plg.ImportExcel(ProjDir));
         }
 
-        #endregion ImportExcel
+        #endregion Import from Excel
 
-        #region BlSelAll
+        #region Select All Blocks
 
         private RelayCommand _BlSelAllCommand = null;
 
@@ -393,12 +393,12 @@ namespace ModelSpace
         private void OnBlSelAll(object parameter)
         {
             foreach (var el in View.LbBlk.Items)
-                ((Sett)el).Enable = true;
+                ((Settings)el).Enable = true;
         }
 
-        #endregion BlSelAll
+        #endregion Select All Blocks
 
-        #region BlUnSelAll
+        #region Unselect All Blocks
 
         private RelayCommand _BlUnSelAllCommand = null;
 
@@ -423,12 +423,12 @@ namespace ModelSpace
         private void OnBlUnSelAll(object parameter)
         {
             foreach (var el in View.LbBlk.Items)
-                ((Sett)el).Enable = false;
+                ((Settings)el).Enable = false;
         }
 
-        #endregion BlUnSelAll
+        #endregion Unselect All Blocks
 
-        #region AtSelAll
+        #region Select All Attributes
 
         private RelayCommand _AtSelAllCommand = null;
 
@@ -463,9 +463,9 @@ namespace ModelSpace
                 i.Enable = true;
         }
 
-        #endregion AtSelAll
+        #endregion Select All Attributes
 
-        #region AtUnSelAll
+        #region Unselect All Attributes
 
         private RelayCommand _AtUnSelAllCommand = null;
 
@@ -500,7 +500,7 @@ namespace ModelSpace
                 i.Enable = false;
         }
 
-        #endregion AtUnSelAll
+        #endregion Unselect All Attributes
 
         private async Task RunBusyOperation(Func<Task> operation)
         {
