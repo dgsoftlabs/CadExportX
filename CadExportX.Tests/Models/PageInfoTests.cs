@@ -66,16 +66,6 @@ namespace CadExportX.Tests.Models
         }
 
         [Fact]
-        public void GetFileDesc_ReturnsPlaceholder()
-        {
-            var pageInfo = new PageInfo();
-
-            var desc = pageInfo.GetFileDesc();
-
-            Assert.Equal("???", desc);
-        }
-
-        [Fact]
         public void Blocks_CanAddAndRetrieve()
         {
             var pageInfo = new PageInfo();

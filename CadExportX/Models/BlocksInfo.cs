@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Data;
 using System.Linq;
 
 namespace ModelSpace
@@ -151,9 +150,6 @@ namespace ModelSpace
             }
             else return new BlockParam() { Name = "NA", Value = "NA" };
         }
-
-        public string FileName { get; set; }
-        public string FileDesc { get; set; }
 
         public void ResetRevParam()
         {

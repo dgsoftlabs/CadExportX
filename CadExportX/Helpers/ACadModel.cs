@@ -5,7 +5,6 @@ using Autodesk.AutoCAD.Runtime;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Data;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -40,9 +39,6 @@ namespace ModelSpace
         public ObservableCollection<PageInfo> PageInfoList { get; set; }
 
         public ObservableCollection<Settings> SettList { get; set; }
-
-        // Observations
-        private List<string> PathList = new List<string>();
 
         private Boolean IsElectrical { get; set; }
         private string ElectricalProjPath { get; set; }
@@ -162,7 +158,6 @@ namespace ModelSpace
                             Database db = new Database(false, true);
 
                             db.ReadDwgFile(x.Item1, FileOpenMode.OpenForReadAndAllShare, true, null);
-                            ObjectId blkRecId = ObjectId.Null;
                             db.CloseInput(true);
                             PageInfoList.Add(new PageInfo() { Path = x.Item1, Sub = x.Item2 });
 
@@ -477,99 +472,147 @@ namespace ModelSpace
         public async Task GenerateExcelList(ACadViewModel VMod)
         {
             string doc_name = "excel_list";
+            Exc.Application App = null;
+            Exc.Workbook wrk = null;
+            Exc.Worksheet wsh = null;
 
-            // Closing all Excel instances opened in background
-            foreach (var pr in Process.GetProcessesByName("EXCEL"))
+            try
             {
-                if (pr.MainWindowTitle == "" || pr.MainWindowTitle.Contains(doc_name + ".xlsx"))
-                    pr.Kill();
-            }
-
-            if (!Directory.Exists(Path.GetDirectoryName($"{VMod.ProjDir}Lists\\")))
-                Directory.CreateDirectory(Path.GetDirectoryName($"{VMod.ProjDir}Lists\\"));
-
-            Mess?.Invoke(" --------------------------------------------");
-            Mess?.Invoke($" ==== EXCEL ALL LIST GENERATION STARTED ====");
-            Mess?.Invoke(" --------------------------------------------");
-
-            Exc.Application App = new Exc.Application() { DisplayAlerts = false };
-            Exc.Workbook wrk = App.Workbooks.Add(Exc.XlWBATemplate.xlWBATWorksheet);
-            Exc.Worksheet wsh = (Exc.Worksheet)wrk.Worksheets[1];
-            wsh.Name = "ALL";
-
-            await Task.Run(() =>
-            {
-                // Headers
-                var hds_first_col = new List<string>() { "ID", "BL_PATH", "BLOCK_NAME", "BL_SH" };
-
-                // Adding all parameters
-                string[] all_head = new string[] { };
-                all_head = SettList.SelectMany(x => x.Params).Where(x => x.Enable).Select(x => x.Name).OrderBy(x => x).ToArray();
-
-                // Excel header generation
-                List<string> buff = new List<string>(hds_first_col);
-                buff.AddRange(all_head);
-                int p = 1;
-                foreach (var a in buff)
+                // Closing all Excel instances opened in background
+                foreach (var pr in Process.GetProcessesByName("EXCEL"))
                 {
-                    ((Exc.Range)wsh.Cells[1, p]).Value2 = a;
-                    p++;
+                    if (pr.MainWindowTitle == "" || pr.MainWindowTitle.Contains(doc_name + ".xlsx"))
+                        pr.Kill();
                 }
 
-                // Sum
-                int sum = PageInfoList.SelectMany(x => x.Blocks).Count();
-                int i = 2;
-                foreach (var pg in PageInfoList)
+                if (!Directory.Exists(Path.GetDirectoryName($"{VMod.ProjDir}Lists\\")))
+                    Directory.CreateDirectory(Path.GetDirectoryName($"{VMod.ProjDir}Lists\\"));
+
+                Mess?.Invoke(" --------------------------------------------");
+                Mess?.Invoke($" ==== EXCEL ALL LIST GENERATION STARTED ====");
+                Mess?.Invoke(" --------------------------------------------");
+
+                App = new Exc.Application() { DisplayAlerts = false };
+                wrk = App.Workbooks.Add(Exc.XlWBATemplate.xlWBATWorksheet);
+                wsh = (Exc.Worksheet)wrk.Worksheets[1];
+                wsh.Name = "ALL";
+
+                await Task.Run(() =>
                 {
-                    //Rows
-                    foreach (var bl in pg.Blocks.Where(x => SettList.ToList().Exists(m => m.Name == x.Name) && SettList.ToList().Find(m => m.Name == x.Name).Enable))
+                    try
                     {
-                        int j = 1;
-                        foreach (var t in buff)
+                        // Headers
+                        var hds_first_col = new List<string>() { "ID", "BL_PATH", "BLOCK_NAME", "BL_SH" };
+
+                        // Adding all parameters
+                        string[] all_head = new string[] { };
+                        all_head = SettList.SelectMany(x => x.Params).Where(x => x.Enable).Select(x => x.Name).OrderBy(x => x).ToArray();
+
+                        // Excel header generation
+                        List<string> buff = new List<string>(hds_first_col);
+                        buff.AddRange(all_head);
+                        int p = 1;
+                        foreach (var a in buff)
                         {
-                            ((Exc.Range)wsh.Cells[i, j]).Value2 = bl.GetValue(t);
-                            ((Exc.Range)wsh.Cells[i, j]).HorizontalAlignment = Exc.XlHAlign.xlHAlignCenter;
-                            j++;
+                            ((Exc.Range)wsh.Cells[1, p]).Value2 = a;
+                            p++;
                         }
 
-                        i++;
-                        Mess?.Invoke($"{i - 2} -> {sum}");
+                        // Sum
+                        int sum = PageInfoList.SelectMany(x => x.Blocks).Count();
+                        int i = 2;
+                        foreach (var pg in PageInfoList)
+                        {
+                            //Rows
+                            foreach (var bl in pg.Blocks.Where(x => SettList.ToList().Exists(m => m.Name == x.Name) && SettList.ToList().Find(m => m.Name == x.Name).Enable))
+                            {
+                                int j = 1;
+                                foreach (var t in buff)
+                                {
+                                    ((Exc.Range)wsh.Cells[i, j]).Value2 = bl.GetValue(t);
+                                    ((Exc.Range)wsh.Cells[i, j]).HorizontalAlignment = Exc.XlHAlign.xlHAlignCenter;
+                                    j++;
+                                }
+
+                                i++;
+                                Mess?.Invoke($"{i - 2} -> {sum}");
+                            }
+                        }
+                    }
+                    catch (System.Exception ex)
+                    {
+                        Mess?.Invoke($"Error during data processing: {ex.Message}");
+                        throw;
+                    }
+                });
+
+                Mess?.Invoke(" --------------------------------------------");
+                Mess?.Invoke(" ==== EXCEL SG. LIST GENERATION FINISHED ====");
+                Mess?.Invoke(" --------------------------------------------");
+
+                ((Exc.Range)wsh.Columns[1]).Interior.Color = System.Drawing.ColorTranslator.ToOle(System.Drawing.Color.LightGray);
+                ((Exc.Range)wsh.Columns[2]).Interior.Color = System.Drawing.ColorTranslator.ToOle(System.Drawing.Color.LightGray);
+                ((Exc.Range)wsh.Columns[3]).Interior.Color = System.Drawing.ColorTranslator.ToOle(System.Drawing.Color.LightGray);
+
+                App.Visible = true;
+
+                ((Exc.Range)wsh.Cells[2, 4]).Select();
+                wsh.Application.ActiveWindow.FreezePanes = true;
+
+                wsh.EnableAutoFilter = true;
+                wsh.Cells.AutoFilter(1);
+                wsh.Columns.AutoFit();
+
+                if (File.Exists($"{VMod.ProjDir}Lists\\{doc_name}.xlsx"))
+                    File.Delete($"{VMod.ProjDir}Lists\\{doc_name}.xlsx");
+
+                wrk.SaveAs($"{VMod.ProjDir}Lists\\{doc_name}.xlsx");
+
+                App.WorkbookAfterSave += App_WorkbookAfterSave;
+                App.WorkbookBeforeClose += App_WorkbookBeforeClose;
+            }
+            catch (System.Exception ex)
+            {
+                Mess?.Invoke($"Error generating Excel list: {ex.Message}");
+                Mess?.Invoke($"Stack trace: {ex.StackTrace}");
+
+                // Try to close Excel if it was opened
+                if (App != null)
+                {
+                    try
+                    {
+                        App.Visible = false;
+                        wrk?.Close(false);
+                        App.Quit();
+                    }
+                    catch
+                    {
+                        // Ignore cleanup errors
                     }
                 }
-            });
+            }
+            finally
+            {
+                // Clean up COM objects
+                if (wsh != null)
+                {
+                    Marshal.ReleaseComObject(wsh);
+                    wsh = null;
+                }
+                if (wrk != null)
+                {
+                    Marshal.ReleaseComObject(wrk);
+                    wrk = null;
+                }
+                if (App != null)
+                {
+                    Marshal.ReleaseComObject(App);
+                    App = null;
+                }
 
-            Mess?.Invoke(" --------------------------------------------");
-            Mess?.Invoke(" ==== EXCEL SG. LIST GENERATION FINISHED ====");
-            Mess?.Invoke(" --------------------------------------------");
-
-            ((Exc.Range)wsh.Columns[1]).Interior.Color = System.Drawing.ColorTranslator.ToOle(System.Drawing.Color.LightGray);
-            ((Exc.Range)wsh.Columns[2]).Interior.Color = System.Drawing.ColorTranslator.ToOle(System.Drawing.Color.LightGray);
-            ((Exc.Range)wsh.Columns[3]).Interior.Color = System.Drawing.ColorTranslator.ToOle(System.Drawing.Color.LightGray);
-
-            App.Visible = true;
-
-            ((Exc.Range)wsh.Cells[2, 4]).Select();
-            wsh.Application.ActiveWindow.FreezePanes = true;
-
-            wsh.EnableAutoFilter = true;
-            wsh.Cells.AutoFilter(1);
-            wsh.Columns.AutoFit();
-
-            if (File.Exists($"{VMod.ProjDir}Lists\\{doc_name}.xlsx"))
-                File.Delete($"{VMod.ProjDir}Lists\\{doc_name}.xlsx");
-
-            wrk.SaveAs($"{VMod.ProjDir}Lists\\{doc_name}.xlsx");
-
-            App.WorkbookAfterSave += App_WorkbookAfterSave;
-            App.WorkbookBeforeClose += App_WorkbookBeforeClose;
-
-            Marshal.ReleaseComObject(wsh);
-            Marshal.ReleaseComObject(wrk);
-            Marshal.ReleaseComObject(App);
-
-            wsh = null;
-            wrk = null;
-            App = null;
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+            }
         }
 
         private void App_WorkbookBeforeClose(Exc.Workbook Wb, ref bool Cancel)
@@ -659,7 +702,7 @@ namespace ModelSpace
                         long id = long.Parse(((Exc.Range)whs.Cells[i, 1]).Value2?.ToString() ?? "0");
                         string pg = ((Exc.Range)whs.Cells[i, 2]).Value2?.ToString() ?? string.Empty;
 
-                        for (int j = 5, m = 0; j < whs.UsedRange.Columns.Count + 1; j++, m++)
+                        for (int j = 5; j < whs.UsedRange.Columns.Count + 1; j++)
                         {
                             string param = ((Exc.Range)whs.Cells[1, j]).Value2?.ToString() ?? string.Empty;
                             string val = ((Exc.Range)whs.Cells[i, j]).Value2?.ToString() ?? string.Empty;
@@ -695,65 +738,6 @@ namespace ModelSpace
                     wrk = null;
                     App = null;
                 });
-            }
-        }
-
-        private static void DisplayDynBlockProperties(Editor ed, BlockReference br, string name)
-        {
-            // Only continue is we have a valid dynamic block
-            if (br != null && br.IsDynamicBlock)
-            {
-                ed.WriteMessage(
-                  "\nDynamic properties for \"{0}\"\n",
-                  name
-                );
-
-                // Get the dynamic block's property collection
-                DynamicBlockReferencePropertyCollection pc =
-                  br.DynamicBlockReferencePropertyCollection;
-
-                // Loop through, getting the info for each property
-                foreach (DynamicBlockReferenceProperty prop in pc)
-                {
-                    // Start with the property name, type and description
-                    ed.WriteMessage(
-                      "\nProperty: \"{0}\" : {1}",
-                      prop.PropertyName,
-                      prop.UnitsType
-                    );
-
-                    if (prop.Description != "")
-                        ed.WriteMessage(
-                          "\n  Description: {0}",
-                          prop.Description
-                        );
-
-                    // Is it read-only?
-                    if (prop.ReadOnly)
-                        ed.WriteMessage(" (Read Only)");
-
-                    // Get the allowed values, if it's constrained
-                    bool first = true;
-                    foreach (object value in prop.GetAllowedValues())
-                    {
-                        ed.WriteMessage(
-                          (first ? "\n  Allowed values: [" : ", ")
-                        );
-
-                        ed.WriteMessage("\"{0}\"", value);
-                        first = false;
-                    }
-
-                    if (!first)
-                        ed.WriteMessage("]");
-
-                    // And finally the current value
-
-                    ed.WriteMessage(
-                      "\n  Current value: \"{0}\"\n",
-                      prop.Value
-                    );
-                }
             }
         }
     }

@@ -31,11 +31,6 @@ namespace ModelSpace
                 return "???";
         }
 
-        public string GetFileDesc()
-        {
-            return "???";
-        }
-
         private ChangesKind Change_;
 
         public ChangesKind Change

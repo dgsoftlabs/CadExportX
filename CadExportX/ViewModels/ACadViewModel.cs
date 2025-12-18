@@ -1,15 +1,12 @@
 ﻿using Autodesk.AutoCAD.Windows;
 using System;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
-using Exc = Microsoft.Office.Interop.Excel;
 using Reg = Microsoft.Win32;
 using wf = System.Windows.Forms;
 
@@ -64,11 +61,24 @@ namespace ModelSpace
             }
         }
 
+        private string _busyMessage = "Processing...";
+
+        public string BusyMessage
+        {
+            get => _busyMessage;
+            private set
+            {
+                if (_busyMessage == value)
+                    return;
+
+                _busyMessage = value;
+                RaisePropertyChanged();
+            }
+        }
+
         public ACadViewModel(ACadModel Plg)
         {
             this.Plg = Plg;
-
-            ((INotifyPropertyChanged)this).PropertyChanged += Plugin_PropertyChanged;
 
             // Create View - syncCtrl is already initialized in ACadModel.Initialize()
             View = new ACadView(Plg);
@@ -90,17 +100,6 @@ namespace ModelSpace
             BlockAmount = Plg.PageInfoList.SelectMany(x => x.Blocks).Count();
         }
 
-        ~ACadViewModel()
-        {
-        }
-
-        private void Plugin_PropertyChanged(object sender, PropertyChangedEventArgs e)
-        {
-            if (e.PropertyName == nameof(ACadViewModel.ProjDir))
-            {
-            }
-        }
-
         public void ShowManager()
         {
             if (PsManager == null)
@@ -120,16 +119,6 @@ namespace ModelSpace
             PaletteSet pt = sender as PaletteSet;
             pt.PaletteSetMoved -= ps_PaletteSetMoved;
             pt.DockEnabled = DockSides.Bottom | DockSides.Left | DockSides.Top | DockSides.Right;
-        }
-
-        [DllImport("user32.dll")]
-        private static extern int GetWindowThreadProcessId(int hWnd, out int lpdwProcessId);
-
-        private Process GetExcelProcess(Exc.Application excelApp)
-        {
-            int id;
-            GetWindowThreadProcessId(excelApp.Hwnd, out id);
-            return Process.GetProcessById(id);
         }
 
         // === UTILITY COMMANDS ===
@@ -211,7 +200,7 @@ namespace ModelSpace
                     Directory.CreateDirectory(Plg.LogsFolderPath);
 
                 File.WriteAllText($"{Plg.LogsFolderPath}Log_{DateTime.Now.ToString(Plg.LogFormat)}.txt"
-                  , Ex.StackTrace);
+                , Ex.StackTrace);
 
                 Plg.SendInformation(Ex.Message);
             }
@@ -275,7 +264,7 @@ namespace ModelSpace
 
         private async void OnReadAllDrgs(object parameter)
         {
-            await RunBusyOperation(() => Plg.DatabaseUpdate(ProjDir));
+            await RunBusyOperation(() => Plg.DatabaseUpdate(ProjDir), "Reading all drawings...");
         }
 
         #endregion Read All Drawings
@@ -305,7 +294,7 @@ namespace ModelSpace
         private async void OnSaveAllDrvs(object parameter)
         {
             if (MessageBox.Show("Do you want to apply changes to the drawings?", "Attention", MessageBoxButton.OKCancel, MessageBoxImage.Warning) == MessageBoxResult.OK)
-                await RunBusyOperation(() => Plg.DownloadChanges());
+                await RunBusyOperation(() => Plg.DownloadChanges(), "Saving all drawings...");
         }
 
         #endregion Save All Drawings
@@ -334,7 +323,7 @@ namespace ModelSpace
 
         private async void OnExportPartExclSig(object parameter)
         {
-            await RunBusyOperation(() => Plg.GenerateExcelList(this));
+            await RunBusyOperation(() => Plg.GenerateExcelList(this), "Generating Excel list...");
         }
 
         #endregion Export Parts to Excel
@@ -363,7 +352,7 @@ namespace ModelSpace
 
         private async void OnImportExcel(object parameter)
         {
-            await RunBusyOperation(() => Plg.ImportExcel(ProjDir));
+            await RunBusyOperation(() => Plg.ImportExcel(ProjDir), "Importing from Excel...");
         }
 
         #endregion Import from Excel
@@ -502,11 +491,12 @@ namespace ModelSpace
 
         #endregion Unselect All Attributes
 
-        private async Task RunBusyOperation(Func<Task> operation)
+        private async Task RunBusyOperation(Func<Task> operation, string message = "Processing...")
         {
             if (operation == null || IsBusy)
                 return;
 
+            BusyMessage = message;
             IsBusy = true;
             try
             {
