@@ -1,5 +1,10 @@
 ﻿# CadExportX
 
+![CI/CD](https://github.com/dgsoftlabs/CadExportX/workflows/CI%2FCD%20Pipeline/badge.svg)
+![Tests](https://img.shields.io/badge/tests-49%20passing-brightgreen)
+![.NET](https://img.shields.io/badge/.NET-8.0-blue)
+![Platform](https://img.shields.io/badge/platform-Windows-lightgrey)
+
 ## Description
 
 **CadExportX** is an AutoCAD plugin designed to **dramatically accelerate workflow in engineering projects** created in AutoCAD. The application addresses a common challenge in large-scale technical documentation: managing and editing block attributes across hundreds or thousands of drawings.
@@ -194,6 +199,48 @@ This project is licensed under the terms specified in the repository.
 ## Contributing
 
 Contributions are welcome! Please feel free to submit issues or pull requests.
+
+### Development Workflow
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/my-feature`
+3. Make your changes
+4. Run tests locally: `dotnet test`
+5. Commit your changes: `git commit -am 'Add new feature'`
+6. Push to the branch: `git push origin feature/my-feature`
+7. Submit a pull request
+
+**All pull requests must:**
+- ✅ Pass all CI/CD checks
+- ✅ Include unit tests for new functionality
+- ✅ Maintain or improve test coverage
+- ✅ Follow existing code style
+
+### Running Tests Locally
+
+```bash
+# Run all tests
+dotnet test
+
+# Run tests with coverage
+dotnet test --collect:"XPlat Code Coverage"
+
+# Run specific test project
+dotnet test CadExportX.Tests\CadExportX.Tests.csproj
+
+# Verbose output
+dotnet test --verbosity detailed
+```
+
+### CI/CD Pipeline
+
+The project uses GitHub Actions for continuous integration:
+- ✅ Automated builds on every push and PR
+- ✅ 49 unit tests covering models and commands
+- ✅ Code quality checks
+- ✅ Windows-based testing environment
+
+See [.github/README.md](.github/README.md) for pipeline details.
 
 ## Support
 
