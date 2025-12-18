@@ -1,80 +1,79 @@
 ﻿using ModelSpace;
-using System.Linq;
 
 namespace CadExportX.Tests.Models
 {
     public class SettTests
     {
         [Fact]
-  public void Constructor_InitializesWithBlockInfo()
+        public void Constructor_InitializesWithBlockInfo()
         {
-   var block = new BlocksInfo { Name = "TestBlock" };
+            var block = new BlocksInfo { Name = "TestBlock" };
             block.Parementers.Add(new BlockParam { Name = "TAG", Value = "KKS" });
             block.Parementers.Add(new BlockParam { Name = "DESC", Value = "Description" });
 
-          var sett = new Sett(block);
+            var sett = new Sett(block);
 
-       Assert.Equal("TestBlock", sett.Name);
-         Assert.True(sett.Enable);
-     Assert.Equal(2, sett.Params.Count);
-  }
+            Assert.Equal("TestBlock", sett.Name);
+            Assert.True(sett.Enable);
+            Assert.Equal(2, sett.Params.Count);
+        }
 
-  [Fact]
-      public void Enable_PropagatesToAllParameters()
-{
-      var block = new BlocksInfo();
-     block.Parementers.Add(new BlockParam { Name = "TAG", Value = "KKS" });
-       block.Parementers.Add(new BlockParam { Name = "DESC", Value = "Description" });
+        [Fact]
+        public void Enable_PropagatesToAllParameters()
+        {
+            var block = new BlocksInfo();
+            block.Parementers.Add(new BlockParam { Name = "TAG", Value = "KKS" });
+            block.Parementers.Add(new BlockParam { Name = "DESC", Value = "Description" });
 
             var sett = new Sett(block);
 
             Assert.True(sett.Enable);
-      Assert.True(sett.Params.All(p => p.Enable));
+            Assert.True(sett.Params.All(p => p.Enable));
 
             sett.Enable = false;
             Assert.False(sett.Enable);
-         Assert.All(sett.Params, p => Assert.False(p.Enable));
+            Assert.All(sett.Params, p => Assert.False(p.Enable));
 
-      sett.Enable = true;
-   Assert.True(sett.Enable);
-      Assert.All(sett.Params, p => Assert.True(p.Enable));
+            sett.Enable = true;
+            Assert.True(sett.Enable);
+            Assert.All(sett.Params, p => Assert.True(p.Enable));
         }
 
-   [Fact]
+        [Fact]
         public void Name_CanBeSetAndRetrieved()
         {
-   var sett = new Sett { Name = "TestName" };
+            var sett = new Sett { Name = "TestName" };
 
             Assert.Equal("TestName", sett.Name);
-    }
+        }
 
         [Fact]
         public void Params_AreOrderedByName()
         {
             var block = new BlocksInfo();
             block.Parementers.Add(new BlockParam { Name = "ZEBRA", Value = "Z" });
-          block.Parementers.Add(new BlockParam { Name = "ALPHA", Value = "A" });
+            block.Parementers.Add(new BlockParam { Name = "ALPHA", Value = "A" });
             block.Parementers.Add(new BlockParam { Name = "BETA", Value = "B" });
 
-  var sett = new Sett(block);
+            var sett = new Sett(block);
 
             Assert.Equal("ALPHA", sett.Params[0].Name);
-        Assert.Equal("BETA", sett.Params[1].Name);
-        Assert.Equal("ZEBRA", sett.Params[2].Name);
+            Assert.Equal("BETA", sett.Params[1].Name);
+            Assert.Equal("ZEBRA", sett.Params[2].Name);
         }
 
         [Fact]
-  public void PropertyChanged_RaisedOnNameChange()
- {
-       var sett = new Sett();
+        public void PropertyChanged_RaisedOnNameChange()
+        {
+            var sett = new Sett();
             bool wasRaised = false;
-        sett.PropertyChanged += (s, e) =>
-          {
-  if (e.PropertyName == nameof(Sett.Name))
-        wasRaised = true;
-         };
+            sett.PropertyChanged += (s, e) =>
+              {
+                  if (e.PropertyName == nameof(Sett.Name))
+                      wasRaised = true;
+              };
 
-       sett.Name = "NewName";
+            sett.Name = "NewName";
 
             Assert.True(wasRaised);
         }
@@ -82,17 +81,17 @@ namespace CadExportX.Tests.Models
         [Fact]
         public void PropertyChanged_RaisedOnEnableChange()
         {
-       var sett = new Sett();
-         bool wasRaised = false;
-  sett.PropertyChanged += (s, e) =>
-            {
-       if (e.PropertyName == nameof(Sett.Enable))
-      wasRaised = true;
-            };
+            var sett = new Sett();
+            bool wasRaised = false;
+            sett.PropertyChanged += (s, e) =>
+                      {
+                          if (e.PropertyName == nameof(Sett.Enable))
+                              wasRaised = true;
+                      };
 
-sett.Enable = false;
+            sett.Enable = false;
 
-          Assert.True(wasRaised);
-      }
-  }
+            Assert.True(wasRaised);
+        }
+    }
 }

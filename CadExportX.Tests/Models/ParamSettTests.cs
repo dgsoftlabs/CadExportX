@@ -7,59 +7,59 @@ namespace CadExportX.Tests.Models
         [Fact]
         public void Constructor_InitializesDefaultValues()
         {
-        var paramSett = new ParamSett();
+            var paramSett = new ParamSettings();
 
-  Assert.Null(paramSett.Name);
-          Assert.False(paramSett.Enable);
+            Assert.Null(paramSett.Name);
+            Assert.False(paramSett.Enable);
         }
 
         [Fact]
         public void Name_CanBeSetAndRetrieved()
         {
-            var paramSett = new ParamSett { Name = "TestParam" };
+            var paramSett = new ParamSettings { Name = "TestParam" };
 
-      Assert.Equal("TestParam", paramSett.Name);
+            Assert.Equal("TestParam", paramSett.Name);
         }
 
         [Fact]
         public void Enable_CanBeSetAndRetrieved()
         {
-  var paramSett = new ParamSett { Enable = true };
+            var paramSett = new ParamSettings { Enable = true };
 
             Assert.True(paramSett.Enable);
 
             paramSett.Enable = false;
-         Assert.False(paramSett.Enable);
-     }
+            Assert.False(paramSett.Enable);
+        }
 
         [Fact]
         public void PropertyChanged_RaisedOnNameChange()
-   {
- var paramSett = new ParamSett();
+        {
+            var paramSett = new ParamSettings();
             bool wasRaised = false;
             paramSett.PropertyChanged += (s, e) =>
           {
-      if (e.PropertyName == nameof(ParamSett.Name))
-      wasRaised = true;
-  };
+              if (e.PropertyName == nameof(ParamSettings.Name))
+                  wasRaised = true;
+          };
 
             paramSett.Name = "NewName";
 
-      Assert.True(wasRaised);
+            Assert.True(wasRaised);
         }
 
-      [Fact]
- public void PropertyChanged_RaisedOnEnableChange()
+        [Fact]
+        public void PropertyChanged_RaisedOnEnableChange()
         {
-      var paramSett = new ParamSett();
-    bool wasRaised = false;
+            var paramSett = new ParamSettings();
+            bool wasRaised = false;
             paramSett.PropertyChanged += (s, e) =>
             {
-        if (e.PropertyName == nameof(ParamSett.Enable))
-          wasRaised = true;
-          };
+                if (e.PropertyName == nameof(ParamSettings.Enable))
+                    wasRaised = true;
+            };
 
-      paramSett.Enable = true;
+            paramSett.Enable = true;
 
             Assert.True(wasRaised);
         }

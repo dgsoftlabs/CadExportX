@@ -459,7 +459,7 @@ namespace ModelSpace
 
         private void OnAtSelAll(object parameter)
         {
-            foreach (ParamSett i in View.lbAttr.Items)
+            foreach (ParamSettings i in View.lbAttr.Items)
                 i.Enable = true;
         }
 
@@ -496,7 +496,7 @@ namespace ModelSpace
 
         private void OnAtUnSelAll(object parameter)
         {
-            foreach (ParamSett i in View.lbAttr.Items)
+            foreach (ParamSettings i in View.lbAttr.Items)
                 i.Enable = false;
         }
 
