@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using Exc = Microsoft.Office.Interop.Excel;
@@ -44,6 +45,22 @@ namespace ModelSpace
             {
                 BlockAmount_ = value;
                 RaisePropertyChanged();
+            }
+        }
+
+        private bool _isBusy;
+
+        public bool IsBusy
+        {
+            get => _isBusy;
+            private set
+            {
+                if (_isBusy == value)
+                    return;
+
+                _isBusy = value;
+                RaisePropertyChanged();
+                CommandManager.InvalidateRequerySuggested();
             }
         }
 
@@ -253,12 +270,12 @@ namespace ModelSpace
 
         private bool CanReadAllDrgs(object parameter)
         {
-            return Directory.Exists(ProjDir);
+            return !IsBusy && Directory.Exists(ProjDir);
         }
 
         private async void OnReadAllDrgs(object parameter)
         {
-            await Plg.DatabaseUpdate(ProjDir);
+            await RunBusyOperation(() => Plg.DatabaseUpdate(ProjDir));
         }
 
         #endregion ReadAllDrgs
@@ -282,13 +299,13 @@ namespace ModelSpace
 
         private bool CanSaveAllDrvs(object parameter)
         {
-            return true;
+            return !IsBusy;
         }
 
-        private void OnSaveAllDrvs(object parameter)
+        private async void OnSaveAllDrvs(object parameter)
         {
             if (MessageBox.Show("Do you want to change drawings", "Attention", MessageBoxButton.OKCancel, MessageBoxImage.Warning) == MessageBoxResult.OK)
-                Plg.DownloadChanges();
+                await RunBusyOperation(() => Plg.DownloadChanges());
         }
 
         #endregion SaveAllDrvs
@@ -312,12 +329,12 @@ namespace ModelSpace
 
         private bool CanExportPartExclSig(object parameter)
         {
-            return true;
+            return !IsBusy;
         }
 
-        private void OnExportPartExclSig(object parameter)
+        private async void OnExportPartExclSig(object parameter)
         {
-            Plg.GenerateExcelList(this);
+            await RunBusyOperation(() => Plg.GenerateExcelList(this));
         }
 
         #endregion ExportPartExclSig
@@ -341,12 +358,12 @@ namespace ModelSpace
 
         private bool CanImportExcel(object parameter)
         {
-            return true;
+            return !IsBusy;
         }
 
         private async void OnImportExcel(object parameter)
         {
-            await Plg.ImportExcel(ProjDir);
+            await RunBusyOperation(() => Plg.ImportExcel(ProjDir));
         }
 
         #endregion ImportExcel
@@ -484,5 +501,21 @@ namespace ModelSpace
         }
 
         #endregion AtUnSelAll
+
+        private async Task RunBusyOperation(Func<Task> operation)
+        {
+            if (operation == null || IsBusy)
+                return;
+
+            IsBusy = true;
+            try
+            {
+                await operation();
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
     }
 }

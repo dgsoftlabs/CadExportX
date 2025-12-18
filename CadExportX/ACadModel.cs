@@ -27,7 +27,6 @@ namespace ModelSpace
     {
         // Registry
         public string RegKeyName = "HKEY_CURRENT_USER" + "\\" + "OBJECT_TOOLS_SETT";
-
         public string RegProjectPath = "PROJ_PATH";
 
         //LOGS
@@ -275,7 +274,7 @@ namespace ModelSpace
             }));
         }
 
-        public async void DownloadChanges()
+        public async Task DownloadChanges()
         {
             CloseDocuments();
             ShowWait();
@@ -477,7 +476,7 @@ namespace ModelSpace
 
         // EXCEL LISTS
 
-        public async void GenerateExcelList(ACadViewModel VMod)
+        public async Task GenerateExcelList(ACadViewModel VMod)
         {
             string doc_name = "excel_list";
 
@@ -501,52 +500,45 @@ namespace ModelSpace
             wsh.Name = "ALL";
 
             await Task.Run(() =>
-   {
-       // Headers
-       var hds_first_col = new List<string>() { "ID", "BL_PATH", "BLOCK_NAME", "BL_SH" };
+            {
+                // Headers
+                var hds_first_col = new List<string>() { "ID", "BL_PATH", "BLOCK_NAME", "BL_SH" };
 
-       // Adding all parameters
+                // Adding all parameters
+                string[] all_head = new string[] { };
+                all_head = SettList.SelectMany(x => x.Params).Where(x => x.Enable).Select(x => x.Name).OrderBy(x => x).ToArray();
 
-       string[] all_head = new string[] { };
-       all_head = SettList.SelectMany(x => x.Params).Where(x => x.Enable).Select(x => x.Name).OrderBy(x => x).ToArray();
+                // Excel header generation
+                List<string> buff = new List<string>(hds_first_col);
+                buff.AddRange(all_head);
+                int p = 1;
+                foreach (var a in buff)
+                {
+                    ((Exc.Range)wsh.Cells[1, p]).Value2 = a;
+                    p++;
+                }
 
-       // Excel header generation
-       List<string> buff = new List<string>(hds_first_col);
-       buff.AddRange(all_head);
-       int p = 1;
-       foreach (var a in buff)
-       {
-           ((Exc.Range)wsh.Cells[1, p]).Value2 = a;
-           p++;
-       }
+                // Sum
+                int sum = PageInfoList.SelectMany(x => x.Blocks).Count();
+                int i = 2;
+                foreach (var pg in PageInfoList)
+                {
+                    //Rows
+                    foreach (var bl in pg.Blocks.Where(x => SettList.ToList().Exists(m => m.Name == x.Name) && SettList.ToList().Find(m => m.Name == x.Name).Enable))
+                    {
+                        int j = 1;
+                        foreach (var t in buff)
+                        {
+                            ((Exc.Range)wsh.Cells[i, j]).Value2 = bl.GetValue(t);
+                            ((Exc.Range)wsh.Cells[i, j]).HorizontalAlignment = Exc.XlHAlign.xlHAlignCenter;
+                            j++;
+                        }
 
-       // Sum
-       int sum = PageInfoList.SelectMany(x => x.Blocks).Count();
-
-       int i = 2;
-       foreach (var pg in PageInfoList)
-       {
-           //Rows
-           foreach (var bl in pg.Blocks.Where(x => SettList.ToList().Exists(m => m.Name == x.Name) && SettList.ToList().Find(m => m.Name == x.Name).Enable))
-           {
-               int j = 1;
-               foreach (var t in buff)
-               {
-                   ((Exc.Range)wsh.Cells[i, j]).Value2 = bl.GetValue(t);
-                   ((Exc.Range)wsh.Cells[i, j]).HorizontalAlignment = Exc.XlHAlign.xlHAlignCenter;
-                   j++;
-               }
-
-               i++;
-
-               #region Info Current
-
-               Mess?.Invoke($"{i - 2} -> {sum}");
-
-               #endregion Info Current
-           }
-       }
-   });
+                        i++;
+                        Mess?.Invoke($"{i - 2} -> {sum}");
+                    }
+                }
+            });
 
             Mess?.Invoke(" --------------------------------------------");
             Mess?.Invoke(" ==== EXCEL SG. LIST GENERATION FINISHED ====");
