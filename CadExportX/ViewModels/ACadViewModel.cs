@@ -104,12 +104,12 @@ namespace ModelSpace
         {
             if (PsManager == null)
             {
-                PsManager = new PaletteSet($"TK Helper", new Guid("939E435B-E76F-48F9-829A-CC8D926DF257"));
+                PsManager = new PaletteSet($"CadExportX", new Guid("939E435B-E76F-48F9-829A-CC8D926DF257"));
                 PsManager.SetLocation(new System.Drawing.Point(0, 0));
                 PsManager.SetSize(new System.Drawing.Size(500, 700));
                 PsManager.DockEnabled = DockSides.Bottom;
                 PsManager.PaletteSetMoved += ps_PaletteSetMoved;
-                PsManager.AddVisual($"TK Helper", View);
+                PsManager.AddVisual($"CadExportX", View);
             }
             PsManager.Visible = true;
         }

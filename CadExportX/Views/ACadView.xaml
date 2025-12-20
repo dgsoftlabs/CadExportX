@@ -13,24 +13,27 @@
 
     <UserControl.Resources>
         <!-- Converters -->
-  <lc:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        <lc:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
 
         <!-- AutoCAD Dark Theme Colors -->
         <SolidColorBrush x:Key="AutoCADDarkBackground" Color="#FF2C2C2C" />
         <SolidColorBrush x:Key="AutoCADDarkerBackground" Color="#FF1E1E1E" />
-  <SolidColorBrush x:Key="AutoCADLightBackground" Color="#FF3F3F3F" />
-   <SolidColorBrush x:Key="AutoCADAccent" Color="#FF007ACC" />
-     <SolidColorBrush x:Key="AutoCADAccentHover" Color="#FF1E8AD6" />
+        <SolidColorBrush x:Key="AutoCADLightBackground" Color="#FF3F3F3F" />
+        <SolidColorBrush x:Key="AutoCADAccent" Color="#FF007ACC" />
+        <SolidColorBrush x:Key="AutoCADAccentHover" Color="#FF1E8AD6" />
         <SolidColorBrush x:Key="AutoCADTextPrimary" Color="#FFF1F1F1" />
-<SolidColorBrush x:Key="AutoCADTextSecondary" Color="#FFB0B0B0" />
+        <SolidColorBrush x:Key="AutoCADTextSecondary" Color="#FFB0B0B0" />
         <SolidColorBrush x:Key="AutoCADBorder" Color="#FF555555" />
-  <SolidColorBrush x:Key="AutoCADButtonNormal" Color="#FF3F3F3F" />
+        <SolidColorBrush x:Key="AutoCADButtonNormal" Color="#FF3F3F3F" />
         <SolidColorBrush x:Key="AutoCADButtonHover" Color="#FF4F4F4F" />
-     <SolidColorBrush x:Key="AutoCADButtonPressed" Color="#FF007ACC" />
-  <SolidColorBrush x:Key="AutoCADWarning" Color="#FFFF8C00" />
+        <SolidColorBrush x:Key="AutoCADButtonPressed" Color="#FF007ACC" />
+        <SolidColorBrush x:Key="AutoCADWarning" Color="#FFFF8C00" />
+        <SolidColorBrush x:Key="AutoCADScrollBarBackground" Color="#FF2B2B2B" />
+        <SolidColorBrush x:Key="AutoCADScrollBarThumb" Color="#FF686868" />
+        <SolidColorBrush x:Key="AutoCADScrollBarThumbHover" Color="#FF9E9E9E" />
 
         <!-- Loading Spinner Animation -->
-<Storyboard x:Key="SpinnerAnimation" RepeatBehavior="Forever">
+        <Storyboard x:Key="SpinnerAnimation" RepeatBehavior="Forever">
             <DoubleAnimation Storyboard.TargetName="SpinnerRotate"
            Storyboard.TargetProperty="Angle"
            From="0" To="360" Duration="0:0:1.5" />
@@ -38,313 +41,574 @@
 
         <!-- Pulse Animation for Loading Border -->
         <Storyboard x:Key="PulseAnimation" RepeatBehavior="Forever" AutoReverse="True">
-      <DoubleAnimation Storyboard.TargetName="LoadingBorder"
+            <DoubleAnimation Storyboard.TargetName="LoadingBorder"
       Storyboard.TargetProperty="Opacity"
     From="0.95" To="1.0" Duration="0:0:1.2" />
         </Storyboard>
 
-      <!-- Dark Theme Button Style -->
-        <Style x:Key="DarkButtonStyle" TargetType="Button">
-    <Setter Property="Background" Value="{StaticResource AutoCADButtonNormal}" />
-     <Setter Property="Foreground" Value="{StaticResource AutoCADTextPrimary}" />
-   <Setter Property="BorderBrush" Value="{StaticResource AutoCADBorder}" />
-  <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Padding" Value="8,4" />
-  <Setter Property="FontSize" Value="12" />
-      <Setter Property="Template">
-       <Setter.Value>
-  <ControlTemplate TargetType="Button">
-    <Border x:Name="border"
-     Background="{TemplateBinding Background}"
-         BorderBrush="{TemplateBinding BorderBrush}"
-   BorderThickness="{TemplateBinding BorderThickness}"
-     CornerRadius="2">
-      <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-         </Border>
-     <ControlTemplate.Triggers>
-   <Trigger Property="IsMouseOver" Value="True">
-      <Setter TargetName="border" Property="Background" Value="{StaticResource AutoCADButtonHover}" />
-       </Trigger>
- <Trigger Property="IsPressed" Value="True">
-     <Setter TargetName="border" Property="Background" Value="{StaticResource AutoCADButtonPressed}" />
-   </Trigger>
- <Trigger Property="IsEnabled" Value="False">
-   <Setter Property="Opacity" Value="0.5" />
-   </Trigger>
-     </ControlTemplate.Triggers>
-    </ControlTemplate>
-      </Setter.Value>
-   </Setter>
+        <!-- ScrollBar Thumb Style -->
+        <Style x:Key="DarkScrollBarThumb" TargetType="Thumb">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Thumb">
+                        <Border x:Name="ThumbBorder"
+                                Background="{StaticResource AutoCADScrollBarThumb}"
+                                CornerRadius="3"
+                                SnapsToDevicePixels="True" />
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ThumbBorder" Property="Background" Value="{StaticResource AutoCADScrollBarThumbHover}" />
+                            </Trigger>
+                            <Trigger Property="IsDragging" Value="True">
+                                <Setter TargetName="ThumbBorder" Property="Background" Value="{StaticResource AutoCADAccent}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
-<!-- Dark Theme TextBox Style -->
-      <Style x:Key="DarkTextBoxStyle" TargetType="TextBox">
-    <Setter Property="Background" Value="{StaticResource AutoCADDarkerBackground}" />
-        <Setter Property="Foreground" Value="{StaticResource AutoCADTextPrimary}" />
+        <!-- ScrollBar RepeatButton Style (Arrow Buttons) -->
+        <Style x:Key="DarkScrollBarRepeatButton" TargetType="RepeatButton">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RepeatButton">
+                        <Border Background="{TemplateBinding Background}"
+                                Height="{TemplateBinding Height}"
+                                Width="{TemplateBinding Width}">
+                            <Path x:Name="Arrow"
+                                  Fill="{StaticResource AutoCADScrollBarThumb}"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center"
+                                  Data="{TemplateBinding Content}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Arrow" Property="Fill" Value="{StaticResource AutoCADScrollBarThumbHover}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Arrow" Property="Fill" Value="{StaticResource AutoCADAccent}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ScrollBar Page Button Style -->
+        <Style x:Key="DarkScrollBarPageButton" TargetType="RepeatButton">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RepeatButton">
+                        <Rectangle Fill="{TemplateBinding Background}" />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Dark Theme ScrollBar Style -->
+        <Style x:Key="DarkScrollBarStyle" TargetType="ScrollBar">
+            <Setter Property="Background" Value="{StaticResource AutoCADScrollBarBackground}" />
+            <Setter Property="Stylus.IsPressAndHoldEnabled" Value="False" />
+            <Setter Property="Stylus.IsFlicksEnabled" Value="False" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollBar">
+                        <Grid x:Name="Bg" SnapsToDevicePixels="True">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <Border Grid.RowSpan="3" Background="{TemplateBinding Background}" />
+
+                            <!-- Up Button -->
+                            <RepeatButton Grid.Row="0"
+                                        Height="18"
+                                        Command="ScrollBar.LineUpCommand"
+                                        Style="{StaticResource DarkScrollBarRepeatButton}"
+                                        Content="M 0 4 L 4 0 L 8 4 Z" />
+
+                            <!-- Track -->
+                            <Track x:Name="PART_Track"
+                                   Grid.Row="1"
+                                   IsDirectionReversed="True">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Command="ScrollBar.PageUpCommand"
+                                                Style="{StaticResource DarkScrollBarPageButton}" />
+                                </Track.DecreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb Style="{StaticResource DarkScrollBarThumb}"
+                                           Margin="2,0" />
+                                </Track.Thumb>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Command="ScrollBar.PageDownCommand"
+                                                Style="{StaticResource DarkScrollBarPageButton}" />
+                                </Track.IncreaseRepeatButton>
+                            </Track>
+
+                            <!-- Down Button -->
+                            <RepeatButton Grid.Row="2"
+                                        Height="18"
+                                        Command="ScrollBar.LineDownCommand"
+                                        Style="{StaticResource DarkScrollBarRepeatButton}"
+                                        Content="M 0 0 L 4 4 L 8 0 Z" />
+                        </Grid>
+
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="Orientation" Value="Horizontal">
+                                <Setter TargetName="Bg" Property="LayoutTransform">
+                                    <Setter.Value>
+                                        <RotateTransform Angle="-90" />
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="Orientation" Value="Horizontal">
+                    <Setter Property="Width" Value="Auto" />
+                    <Setter Property="MinWidth" Value="0" />
+                    <Setter Property="Height" Value="12" />
+                    <Setter Property="MinHeight" Value="12" />
+                </Trigger>
+                <Trigger Property="Orientation" Value="Vertical">
+                    <Setter Property="Width" Value="12" />
+                    <Setter Property="MinWidth" Value="12" />
+                    <Setter Property="Height" Value="Auto" />
+                    <Setter Property="MinHeight" Value="0" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Dark Theme Button Style -->
+        <Style x:Key="DarkButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="{StaticResource AutoCADButtonNormal}" />
+            <Setter Property="Foreground" Value="{StaticResource AutoCADTextPrimary}" />
             <Setter Property="BorderBrush" Value="{StaticResource AutoCADBorder}" />
-          <Setter Property="BorderThickness" Value="1" />
-  <Setter Property="Padding" Value="4" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="8,4" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="2">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="{StaticResource AutoCADButtonHover}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="{StaticResource AutoCADButtonPressed}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.5" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Dark Theme TextBox Style -->
+        <Style x:Key="DarkTextBoxStyle" TargetType="TextBox">
+            <Setter Property="Background" Value="{StaticResource AutoCADDarkerBackground}" />
+            <Setter Property="Foreground" Value="{StaticResource AutoCADTextPrimary}" />
+            <Setter Property="BorderBrush" Value="{StaticResource AutoCADBorder}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="4" />
             <Setter Property="CaretBrush" Value="{StaticResource AutoCADTextPrimary}" />
         </Style>
 
         <!-- Dark Theme Label Style -->
-    <Style x:Key="DarkLabelStyle" TargetType="Label">
-        <Setter Property="Foreground" Value="{StaticResource AutoCADTextPrimary}" />
-   </Style>
-
-     <!-- Dark Theme ListBox Style -->
-  <Style x:Key="DarkListBoxStyle" TargetType="ListBox">
-     <Setter Property="Background" Value="{StaticResource AutoCADDarkerBackground}" />
-      <Setter Property="Foreground" Value="{StaticResource AutoCADTextPrimary}" />
-    <Setter Property="BorderBrush" Value="{StaticResource AutoCADBorder}" />
-        <Setter Property="BorderThickness" Value="1" />
+        <Style x:Key="DarkLabelStyle" TargetType="Label">
+            <Setter Property="Foreground" Value="{StaticResource AutoCADTextPrimary}" />
         </Style>
 
-     <!-- Dark Theme CheckBox Style -->
+        <!-- Dark Theme ListBox Style -->
+        <Style x:Key="DarkListBoxStyle" TargetType="ListBox">
+            <Setter Property="Background" Value="{StaticResource AutoCADDarkerBackground}" />
+            <Setter Property="Foreground" Value="{StaticResource AutoCADTextPrimary}" />
+            <Setter Property="BorderBrush" Value="{StaticResource AutoCADBorder}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBox">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                SnapsToDevicePixels="True">
+                            <ScrollViewer Focusable="False" Padding="{TemplateBinding Padding}">
+                                <ItemsPresenter SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+                            </ScrollViewer>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- ScrollViewer Style with Custom ScrollBars -->
+        <Style TargetType="ScrollViewer">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollViewer">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <ScrollContentPresenter Grid.Column="0" Grid.Row="0"
+                                                   Content="{TemplateBinding Content}"
+                                                   ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                   CanContentScroll="{TemplateBinding CanContentScroll}" />
+
+                            <ScrollBar Grid.Column="1" Grid.Row="0"
+                                     Name="PART_VerticalScrollBar"
+                                     Value="{TemplateBinding VerticalOffset}"
+                                     Maximum="{TemplateBinding ScrollableHeight}"
+                                     ViewportSize="{TemplateBinding ViewportHeight}"
+                                     Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}"
+                                     Style="{StaticResource DarkScrollBarStyle}" />
+
+                            <ScrollBar Grid.Column="0" Grid.Row="1"
+                                     Name="PART_HorizontalScrollBar"
+                                     Orientation="Horizontal"
+                                     Value="{TemplateBinding HorizontalOffset}"
+                                     Maximum="{TemplateBinding ScrollableWidth}"
+                                     ViewportSize="{TemplateBinding ViewportWidth}"
+                                     Visibility="{TemplateBinding ComputedHorizontalScrollBarVisibility}"
+                                     Style="{StaticResource DarkScrollBarStyle}" />
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Dark Theme CheckBox Style -->
         <Style x:Key="DarkCheckBoxStyle" TargetType="CheckBox">
-<Setter Property="Foreground" Value="{StaticResource AutoCADTextPrimary}" />
+            <Setter Property="Foreground" Value="{StaticResource AutoCADTextPrimary}" />
+            <Setter Property="Background" Value="{StaticResource AutoCADDarkerBackground}" />
+            <Setter Property="BorderBrush" Value="{StaticResource AutoCADBorder}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <Grid Background="Transparent">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <Border x:Name="CheckBoxBorder"
+                                    Grid.Column="0"
+                                    Width="16"
+                                    Height="16"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="2">
+                                <Path x:Name="CheckMark"
+                                      Width="10"
+                                      Height="10"
+                                      Data="M 0,5 L 3,8 L 8,0"
+                                      Stroke="{StaticResource AutoCADAccent}"
+                                      StrokeThickness="2"
+                                      Visibility="Collapsed"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round" />
+                            </Border>
+
+                            <ContentPresenter Grid.Column="1"
+                                            Margin="4,0,0,0"
+                                            VerticalAlignment="Center"
+                                            RecognizesAccessKey="True" />
+                        </Grid>
+
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="CheckMark" Property="Visibility" Value="Visible" />
+                                <Setter TargetName="CheckBoxBorder" Property="Background" Value="{StaticResource AutoCADLightBackground}" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="CheckBoxBorder" Property="BorderBrush" Value="{StaticResource AutoCADAccent}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="CheckBoxBorder" Property="Background" Value="{StaticResource AutoCADButtonPressed}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.5" />
+                            </Trigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsChecked" Value="True" />
+                                    <Condition Property="IsMouseOver" Value="True" />
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="CheckMark" Property="Stroke" Value="{StaticResource AutoCADAccentHover}" />
+                            </MultiTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
-    <!-- Dark Theme StatusBar Style -->
+        <!-- Dark Theme StatusBar Style -->
         <Style x:Key="DarkStatusBarStyle" TargetType="StatusBar">
-    <Setter Property="Background" Value="{StaticResource AutoCADDarkerBackground}" />
-     <Setter Property="Foreground" Value="{StaticResource AutoCADTextSecondary}" />
+            <Setter Property="Background" Value="{StaticResource AutoCADDarkerBackground}" />
+            <Setter Property="Foreground" Value="{StaticResource AutoCADTextSecondary}" />
         </Style>
     </UserControl.Resources>
 
     <Grid>
-      <Grid.RowDefinitions>
-   <RowDefinition Height="Auto" />
-    <RowDefinition Height="Auto" />
-        <RowDefinition Height="*" />
-      <RowDefinition Height="25" />
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="25" />
         </Grid.RowDefinitions>
 
-      <!-- Header Section -->
+        <!-- Header Section -->
         <Border Grid.Row="0" Background="{StaticResource AutoCADDarkerBackground}" Padding="10">
-       <StackPanel Orientation="Horizontal">
-      <Image Source="pack://application:,,,/CadExportX;Component/Image/logo.png" Height="70" />
-       <StackPanel Margin="15,0,0,0" VerticalAlignment="Center">
-       <Label FontSize="18" FontWeight="Bold" Content="CadExportX 1.0.0"
-Foreground="{StaticResource AutoCADTextPrimary}" Padding="0" />
-      <Label FontSize="11" Content="DGSoftLabs"
-       Foreground="{StaticResource AutoCADTextSecondary}" Padding="0" Margin="0,5,0,0" />
-          </StackPanel>
-     </StackPanel>
-      </Border>
+            <StackPanel Orientation="Horizontal">
+                <Image Source="pack://application:,,,/CadExportX;Component/Image/logo.png" Height="70" />
+                <StackPanel Margin="15,0,0,0" VerticalAlignment="Center">
+                    <Label FontSize="18" FontWeight="Bold" Content="CadExportX 1.0.0"
+                        Foreground="{StaticResource AutoCADTextPrimary}" Padding="0" />
+                    <Label FontSize="11" Content="DGSoftLabs"
+                        Foreground="{StaticResource AutoCADTextSecondary}" Padding="0" Margin="0,5,0,0" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
 
- <!-- Project Path Section -->
+        <!-- Project Path Section -->
         <Grid Grid.Row="1" Background="{StaticResource AutoCADDarkBackground}">
-   <Grid.ColumnDefinitions>
-   <ColumnDefinition Width="Auto" />
-     <ColumnDefinition Width="Auto" />
-    <ColumnDefinition Width="*" />
-     <ColumnDefinition Width="Auto" />
-</Grid.ColumnDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
 
-  <Grid.RowDefinitions>
-     <RowDefinition Height="Auto" />
-     <RowDefinition Height="Auto" />
-   </Grid.RowDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
 
-    <Label Grid.Row="0" Grid.Column="2" Content="Project Path"
+            <Label Grid.Row="0" Grid.Column="2" Content="Project Path"
           Style="{StaticResource DarkLabelStyle}" Margin="5,5,5,0" />
 
-       <Button Grid.Column="0" Grid.Row="1" Margin="5" Width="30" Height="25"
+            <Button Grid.Column="0" Grid.Row="1" Margin="5" Width="30" Height="25"
        Command="{Binding InspectorShowCommand}" Style="{StaticResource DarkButtonStyle}"
       ToolTip="Inspector">
-     <Image Source="pack://application:,,,/CadExportX;Component/Image/inspector.png" />
-          </Button>
+                <Image Source="pack://application:,,,/CadExportX;Component/Image/inspector.png" />
+            </Button>
 
- <Button Grid.Column="1" Grid.Row="1" Content="📁" Margin="5" Width="30" Height="25"
+            <Button Grid.Column="1" Grid.Row="1" Content="📁" Margin="5" Width="30" Height="25"
       Command="{Binding ExploreProjCommand}" Style="{StaticResource DarkButtonStyle}"
        ToolTip="Explore Project Folder" />
 
-         <TextBox x:Name="TbProject" Grid.Column="2" Grid.Row="1" Margin="5" Height="25"
+            <TextBox x:Name="TbProject" Grid.Column="2" Grid.Row="1" Margin="5" Height="25"
        Text="{Binding ProjDir}" Style="{StaticResource DarkTextBoxStyle}" />
 
-<Button x:Name="BtProject" Grid.Column="3" Grid.Row="1" Margin="5" Width="30" Height="25"
+            <Button x:Name="BtProject" Grid.Column="3" Grid.Row="1" Margin="5" Width="30" Height="25"
           Content="..." Command="{Binding ProjectDirCommand}" Style="{StaticResource DarkButtonStyle}"
     ToolTip="Browse Project Folder" />
         </Grid>
 
-   <!-- Main Content Section -->
-      <Grid Grid.Row="2" Background="{StaticResource AutoCADDarkBackground}">
-   <Grid.ColumnDefinitions>
-        <ColumnDefinition />
-     <ColumnDefinition />
- </Grid.ColumnDefinitions>
+        <!-- Main Content Section -->
+        <Grid Grid.Row="2" Background="{StaticResource AutoCADDarkBackground}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition />
+                <ColumnDefinition />
+            </Grid.ColumnDefinitions>
 
-    <Grid.RowDefinitions>
-      <RowDefinition Height="Auto" />
-     <RowDefinition />
-  </Grid.RowDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition />
+            </Grid.RowDefinitions>
 
-    <!-- Action Buttons -->
-        <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="5">
-   <Button Margin="2" Width="110" Height="28" Command="{Binding ReadAllDrgsCommand}"
-  Style="{StaticResource DarkButtonStyle}">
-      <StackPanel Orientation="Horizontal">
-    <TextBlock Text="📖 " FontSize="14" />
-   <TextBlock Text="Read Drawings" />
-    </StackPanel>
-     </Button>
-    <Button Margin="2" Width="120" Height="28" Command="{Binding ExportPartExclSigCommand}"
-  Style="{StaticResource DarkButtonStyle}">
- <StackPanel Orientation="Horizontal">
- <TextBlock Text="📊 " FontSize="14" />
-    <TextBlock Text="Generate Excel" />
-    </StackPanel>
-            </Button>
-  <Button Margin="2" Width="100" Height="28" Command="{Binding ImportExcelCommand}"
-         Style="{StaticResource DarkButtonStyle}">
-     <StackPanel Orientation="Horizontal">
-      <TextBlock Text="📥 " FontSize="14" />
-        <TextBlock Text="Load Excel" />
-          </StackPanel>
-    </Button>
- <Button Margin="2" Width="120" Height="28" Command="{Binding SaveAllDrvsCommand}">
- <Button.Style>
-      <Style TargetType="Button" BasedOn="{StaticResource DarkButtonStyle}">
-   <Setter Property="Background" Value="{StaticResource AutoCADWarning}" />
- <Style.Triggers>
-             <Trigger Property="IsMouseOver" Value="True">
-   <Setter Property="Background" Value="#FFFFAA00" />
-  </Trigger>
-           </Style.Triggers>
-   </Style>
-   </Button.Style>
-            <StackPanel Orientation="Horizontal">
-    <TextBlock Text="💾 " FontSize="14" />
-    <TextBlock Text="Save Drawings" />
-      </StackPanel>
-       </Button>
-  </StackPanel>
+            <!-- Action Buttons -->
+            <StackPanel Grid.Row="0" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="5">
+                <Button Margin="2" Width="110" Height="28" Command="{Binding ReadAllDrgsCommand}"
+                        Style="{StaticResource DarkButtonStyle}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="📖 " FontSize="14" />
+                        <TextBlock Text="Read Drawings" />
+                    </StackPanel>
+                </Button>
+                <Button Margin="2" Width="120" Height="28" Command="{Binding ExportPartExclSigCommand}"
+                        Style="{StaticResource DarkButtonStyle}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="📊 " FontSize="14" />
+                        <TextBlock Text="Generate Excel" />
+                    </StackPanel>
+                </Button>
+                <Button Margin="2" Width="100" Height="28" Command="{Binding ImportExcelCommand}"
+                        Style="{StaticResource DarkButtonStyle}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="📥 " FontSize="14" />
+                        <TextBlock Text="Load Excel" />
+                    </StackPanel>
+                </Button>
+                <Button Margin="2" Width="120" Height="28" Command="{Binding SaveAllDrvsCommand}">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource DarkButtonStyle}">
+                            <Setter Property="Background" Value="{StaticResource AutoCADWarning}" />
+                            <Style.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Background" Value="#FFFFAA00" />
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="💾 " FontSize="14" />
+                        <TextBlock Text="Save Drawings" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
 
-        <!-- Blocks List -->
-  <Border Grid.Column="0" Grid.Row="1" Margin="5" BorderBrush="{StaticResource AutoCADBorder}" BorderThickness="1">
-    <Grid>
-           <Grid.RowDefinitions>
-   <RowDefinition Height="Auto" />
-    <RowDefinition Height="*" />
-   </Grid.RowDefinitions>
+            <!-- Blocks List -->
+            <Border Grid.Column="0" Grid.Row="1" Margin="5" BorderBrush="{StaticResource AutoCADBorder}" BorderThickness="1">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
 
-      <Label Grid.Row="0" Content="Blocks" FontWeight="Bold"
-         Foreground="{StaticResource AutoCADAccent}"
-        Background="{StaticResource AutoCADDarkerBackground}" Padding="5" />
+                    <Label Grid.Row="0" Content="Blocks" FontWeight="Bold"
+                         Foreground="{StaticResource AutoCADAccent}"
+                         Background="{StaticResource AutoCADDarkerBackground}" Padding="5" />
 
-    <ListBox x:Name="LbBlk" Grid.Row="1" ItemsSource="{Binding Plg.SettList}"
-  Style="{StaticResource DarkListBoxStyle}">
-   <ListBox.ContextMenu>
-  <ContextMenu Background="{StaticResource AutoCADDarkBackground}">
- <MenuItem Header="Select All" Command="{Binding BlSelAllCommand}"
-        Foreground="{StaticResource AutoCADTextPrimary}" />
-           <MenuItem Header="Unselect All" Command="{Binding BlUnSelAllCommand}"
-     Foreground="{StaticResource AutoCADTextPrimary}" />
-    </ContextMenu>
-              </ListBox.ContextMenu>
+                    <ListBox x:Name="LbBlk" Grid.Row="1" ItemsSource="{Binding Plg.SettList}"
+                            Style="{StaticResource DarkListBoxStyle}">
+                        <ListBox.ContextMenu>
+                            <ContextMenu Background="{StaticResource AutoCADDarkBackground}">
+                                <MenuItem Header="Select All" Command="{Binding BlSelAllCommand}"
+                                    Foreground="{StaticResource AutoCADTextPrimary}" />
+                                <MenuItem Header="Unselect All" Command="{Binding BlUnSelAllCommand}"
+                                Foreground="{StaticResource AutoCADTextPrimary}" />
+                            </ContextMenu>
+                        </ListBox.ContextMenu>
 
-  <ListBox.ItemTemplate>
-   <DataTemplate>
-       <StackPanel Orientation="Horizontal">
-        <CheckBox Margin="5,2,10,2" IsChecked="{Binding Enable}"
-   Style="{StaticResource DarkCheckBoxStyle}" VerticalAlignment="Center" />
-   <Label Content="{Binding Name}" Foreground="{StaticResource AutoCADTextPrimary}" Padding="0" />
-    </StackPanel>
-     </DataTemplate>
-     </ListBox.ItemTemplate>
-        </ListBox>
-        </Grid>
-    </Border>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <CheckBox Margin="5,2,10,2" IsChecked="{Binding Enable}"
+                                        Style="{StaticResource DarkCheckBoxStyle}" VerticalAlignment="Center" />
+                                    <TextBlock Text="🧱" FontSize="14" Margin="0,0,5,0" VerticalAlignment="Center" />
+                                    <Label Content="{Binding Name}" Foreground="{StaticResource AutoCADTextPrimary}" Padding="0" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+            </Border>
 
             <!-- Attributes List -->
-    <Border Grid.Column="1" Grid.Row="1" Margin="5" BorderBrush="{StaticResource AutoCADBorder}" BorderThickness="1">
-     <Grid>
-        <Grid.RowDefinitions>
-   <RowDefinition Height="Auto" />
-    <RowDefinition Height="*" />
-      </Grid.RowDefinitions>
+            <Border Grid.Column="1" Grid.Row="1" Margin="5" BorderBrush="{StaticResource AutoCADBorder}" BorderThickness="1">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
 
-     <Label Grid.Row="0" Content="Attributes" FontWeight="Bold"
-             Foreground="{StaticResource AutoCADAccent}"
-   Background="{StaticResource AutoCADDarkerBackground}" Padding="5" />
+                    <Label Grid.Row="0" Content="Attributes" FontWeight="Bold"
+                        Foreground="{StaticResource AutoCADAccent}"
+                        Background="{StaticResource AutoCADDarkerBackground}" Padding="5" />
 
-     <ListBox x:Name="lbAttr" Grid.Row="1"
-     ItemsSource="{Binding ElementName=LbBlk, Path=SelectedItem.Params}"
- Style="{StaticResource DarkListBoxStyle}">
-       <ListBox.ContextMenu>
-       <ContextMenu Background="{StaticResource AutoCADDarkBackground}">
-  <MenuItem Header="Select All" Command="{Binding AtSelAllCommand}"
- Foreground="{StaticResource AutoCADTextPrimary}" />
-                <MenuItem Header="Unselect All" Command="{Binding AtUnSelAllCommand}"
- Foreground="{StaticResource AutoCADTextPrimary}" />
-  </ContextMenu>
-  </ListBox.ContextMenu>
+                    <ListBox x:Name="lbAttr" Grid.Row="1"
+                    ItemsSource="{Binding ElementName=LbBlk, Path=SelectedItem.Params}"
+                        Style="{StaticResource DarkListBoxStyle}">
+                        <ListBox.ContextMenu>
+                            <ContextMenu Background="{StaticResource AutoCADDarkBackground}">
+                                <MenuItem Header="Select All" Command="{Binding AtSelAllCommand}"
+                                    Foreground="{StaticResource AutoCADTextPrimary}" />
+                                <MenuItem Header="Unselect All" Command="{Binding AtUnSelAllCommand}"
+                                Foreground="{StaticResource AutoCADTextPrimary}" />
+                            </ContextMenu>
+                        </ListBox.ContextMenu>
 
-           <ListBox.ItemTemplate>
-        <DataTemplate>
-  <StackPanel Orientation="Horizontal">
-<CheckBox Margin="5,2,10,2" IsChecked="{Binding Enable}"
-     Style="{StaticResource DarkCheckBoxStyle}" VerticalAlignment="Center" />
-    <Label Content="{Binding Name}" Foreground="{StaticResource AutoCADTextPrimary}" Padding="0" />
-        </StackPanel>
-   </DataTemplate>
-        </ListBox.ItemTemplate>
-    </ListBox>
-      </Grid>
-   </Border>
-  </Grid>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <CheckBox Margin="5,2,10,2" IsChecked="{Binding Enable}"
+                                        Style="{StaticResource DarkCheckBoxStyle}" VerticalAlignment="Center" />
+                                    <TextBlock Text="🏷️" FontSize="14" Margin="0,0,5,0" VerticalAlignment="Center" />
+                                    <Label Content="{Binding Name}" Foreground="{StaticResource AutoCADTextPrimary}" Padding="0" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+            </Border>
+        </Grid>
 
         <!-- Status Bar -->
- <StatusBar Grid.Row="3" Style="{StaticResource DarkStatusBarStyle}">
-  <StatusBarItem>
-         <StackPanel Orientation="Horizontal">
-   <TextBlock Text="Pages: " Foreground="{StaticResource AutoCADTextSecondary}" />
-   <TextBlock Text="{Binding BlockAmount}" Foreground="{StaticResource AutoCADAccent}" FontWeight="Bold" />
-    </StackPanel>
-  </StatusBarItem>
-     </StatusBar>
+        <StatusBar Grid.Row="3" Style="{StaticResource DarkStatusBarStyle}">
+            <StatusBarItem>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="Pages: " Foreground="{StaticResource AutoCADTextSecondary}" />
+                    <TextBlock Text="{Binding BlockAmount}" Foreground="{StaticResource AutoCADAccent}" FontWeight="Bold" />
+                </StackPanel>
+            </StatusBarItem>
+        </StatusBar>
 
         <!-- Loading Overlay -->
-      <Grid Grid.RowSpan="4" Background="#CC1E1E1E" 
+        <Grid Grid.RowSpan="4" Background="#CC1E1E1E"
         Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}">
-      <Border x:Name="LoadingBorder" 
-          Background="{StaticResource AutoCADDarkBackground}" 
-   BorderBrush="{StaticResource AutoCADAccent}" 
-         BorderThickness="2" 
+            <Border x:Name="LoadingBorder"
+          Background="{StaticResource AutoCADDarkBackground}"
+                BorderBrush="{StaticResource AutoCADAccent}"
+         BorderThickness="2"
           CornerRadius="8"
        Width="250" Height="200"
-   VerticalAlignment="Center" 
+                VerticalAlignment="Center"
        HorizontalAlignment="Center"
             Opacity="0.95">
-   <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
- <!-- Spinner -->
-   <Grid Width="80" Height="80" Margin="0,0,0,20">
-      <Ellipse Stroke="{StaticResource AutoCADAccent}" 
- StrokeThickness="6" 
-  StrokeDashArray="20 10"
-     RenderTransformOrigin="0.5,0.5">
-    <Ellipse.RenderTransform>
-        <RotateTransform x:Name="SpinnerRotate" Angle="0" />
- </Ellipse.RenderTransform>
-  </Ellipse>
-  </Grid>
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                    <!-- Spinner -->
+                    <Grid Width="80" Height="80" Margin="0,0,0,20">
+                        <Ellipse Stroke="{StaticResource AutoCADAccent}"
+                            StrokeThickness="6"
+                          StrokeDashArray="20 10"
+                             RenderTransformOrigin="0.5,0.5">
+                            <Ellipse.RenderTransform>
+                                <RotateTransform x:Name="SpinnerRotate" Angle="0" />
+                            </Ellipse.RenderTransform>
+                        </Ellipse>
+                    </Grid>
 
-        <!-- Loading Text -->
- <TextBlock Text="{Binding BusyMessage}" 
- FontSize="16" 
-FontWeight="Bold"
-     Foreground="{StaticResource AutoCADTextPrimary}" 
-       HorizontalAlignment="Center" 
-       TextWrapping="Wrap"
-      TextAlignment="Center"
-  Margin="10,0,10,5"/>
-      <TextBlock Text="Please wait..." 
-  FontSize="12" 
-   Foreground="{StaticResource AutoCADTextSecondary}" 
-   HorizontalAlignment="Center"/>
-      </StackPanel>
-      </Border>
-   </Grid>
+                    <!-- Loading Text -->
+                    <TextBlock Text="{Binding BusyMessage}"
+                     FontSize="16"
+                    FontWeight="Bold"
+                         Foreground="{StaticResource AutoCADTextPrimary}"
+                           HorizontalAlignment="Center"
+                           TextWrapping="Wrap"
+                          TextAlignment="Center"
+                      Margin="10,0,10,5" />
+                                        <TextBlock Text="Please wait..."
+                      FontSize="12"
+                       Foreground="{StaticResource AutoCADTextSecondary}"
+                       HorizontalAlignment="Center" />
+                </StackPanel>
+            </Border>
+        </Grid>
     </Grid>
 </UserControl>

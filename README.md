@@ -152,7 +152,7 @@ The plugin uses a dark theme interface similar to AutoCAD, ensuring visual consi
 
 1. Load the plugin in AutoCAD using `NETLOAD` command
 2. Select the `CadExportX.dll` file
-3. The "TK Helper" palette will appear automatically
+3. The "CadExportX" palette will appear automatically
 
 ## Usage
 

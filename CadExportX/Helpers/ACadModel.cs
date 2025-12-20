@@ -57,23 +57,23 @@ namespace ModelSpace
                 if (syncCtrl == null)
                     syncCtrl = new Control();
 
-                System.Diagnostics.Debug.WriteLine("=== TK Helper: syncCtrl initialized ===");
+                System.Diagnostics.Debug.WriteLine("=== CadExportX: syncCtrl initialized ===");
 
                 PageInfoList = new ObservableCollection<PageInfo>();
                 SettList = new ObservableCollection<Settings>();
 
-                System.Diagnostics.Debug.WriteLine("=== TK Helper: Creating ViewModel ===");
+                System.Diagnostics.Debug.WriteLine("=== CadExportX: Creating ViewModel ===");
                 ViewModel = new ACadViewModel(this);
 
-                System.Diagnostics.Debug.WriteLine("=== TK Helper: ViewModel created successfully ===");
+                System.Diagnostics.Debug.WriteLine("=== CadExportX: ViewModel created successfully ===");
 
                 Mess += AutoCadCablePlug_Mess;
             }
             catch (System.Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"=== TK Helper ERROR: {ex.Message} ===");
+                System.Diagnostics.Debug.WriteLine($"=== CadExportX ERROR: {ex.Message} ===");
                 System.Diagnostics.Debug.WriteLine($"Stack: {ex.StackTrace}");
-                Application.DocumentManager.MdiActiveDocument?.Editor?.WriteMessage($"\nTK Helper Error: {ex.Message}\n");
+                Application.DocumentManager.MdiActiveDocument?.Editor?.WriteMessage($"\nCadExportX Error: {ex.Message}\n");
             }
         }
 
