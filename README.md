@@ -42,6 +42,8 @@ The plugin was created to:
 - **Multi-page, multi-block editing** - make consistent changes across entire projects without opening individual drawings
 - **Manage AutoCAD Electrical projects** - handle `.wdp` projects with automatic folder structure detection
 
+![CadExportX Interface](CadExportXMini.png)
+
 ### Key Features
 
 #### 1. **Drawing Database Update**
