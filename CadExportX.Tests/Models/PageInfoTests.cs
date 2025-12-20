@@ -11,9 +11,7 @@ namespace CadExportX.Tests.Models
 
             Assert.Null(pageInfo.Path);
             Assert.Null(pageInfo.Sub);
-            Assert.False(pageInfo.IsChanged);
             Assert.Empty(pageInfo.Blocks);
-            Assert.Equal(ChangesKind.NotChanged, pageInfo.Change);
         }
 
         [Fact]
@@ -89,14 +87,6 @@ namespace CadExportX.Tests.Models
             var result = pageInfo.ToString();
 
             Assert.Equal("0", result);
-        }
-
-        [Fact]
-        public void Change_CanBeSetAndRetrieved()
-        {
-            var pageInfo = new PageInfo { Change = ChangesKind.Modfied };
-
-            Assert.Equal(ChangesKind.Modfied, pageInfo.Change);
         }
     }
 }

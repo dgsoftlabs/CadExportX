@@ -60,9 +60,9 @@ Exports block data to Excel spreadsheet with:
 - Color-coded system columns
 
 #### 3. **Excel Import (Bidirectional Sync)**
-Two workflows supported:
-- **Live editing** - Excel file automatically saves changes back to the database
+Import updated values from any Excel file:
 - **Import mode** - select any Excel file to import updated values
+- Supports files edited in Microsoft Excel, LibreOffice Calc, or Google Sheets
 
 Changes are tracked and validated before being written to drawings.
 
@@ -102,9 +102,10 @@ Built-in tool for viewing and analyzing dynamic block properties without opening
 4. Generate Excel List
    └─> Structured spreadsheet created with all data
    └─> File saved to project's "Lists" folder
+   └─> File opens automatically in default spreadsheet application
 
-5. Edit in Excel
- └─> Use Excel's powerful tools (formulas, find/replace, etc.)
+5. Edit in Excel/LibreOffice/Google Sheets
+   └─> Use spreadsheet tools (formulas, find/replace, etc.)
    └─> Make changes to hundreds of blocks simultaneously
    └─> Save the file
 
@@ -138,7 +139,7 @@ Built-in tool for viewing and analyzing dynamic block properties without opening
 
 - **.NET 8** (Windows)
 - **AutoCAD API** (Autodesk.AutoCAD.*)
-- **Microsoft Office Interop** (Excel)
+- **ClosedXML** (Excel file generation - no Office installation required!)
 - **WPF** (user interface with dark theme)
 
 ### UI Theme
@@ -163,7 +164,7 @@ The plugin uses a dark theme interface similar to AutoCAD, ensuring visual consi
 4. **Configure Attributes** - Choose which attributes to export for selected blocks
 5. **Generate Excel List** - Click "Export to Excel" to create the spreadsheet
 6. **Edit in Excel** - Make your changes and save the file
-7. **Import Excel** - Click "Import from Excel" to load changes (or save directly if using live mode)
+7. **Import Excel** - Click "Import from Excel" to load changes
 8. **Save All Drawings** - Click "Save All Drawings" to apply changes to DWG files
 
 ### Advanced Features
@@ -172,6 +173,13 @@ The plugin uses a dark theme interface similar to AutoCAD, ensuring visual consi
 - Use "Select All" / "Deselect All" buttons for quick selection
 - Enable only relevant block types to keep Excel files manageable
 - Choose specific attributes to export (hide internal/system parameters)
+
+#### Excel File Compatibility
+The generated .xlsx files are fully compatible with:
+- **Microsoft Excel** (2007 and newer)
+- **LibreOffice Calc**
+- **Google Sheets**
+- Any other spreadsheet application that supports .xlsx format
 
 ## Project Structure
 
@@ -191,8 +199,9 @@ CadExportX/
 
 - AutoCAD 2020 or newer
 - .NET 8 Runtime
-- Microsoft Excel (for Excel export/import features)
 - Windows operating system
+- **No Microsoft Office installation required!** - Uses ClosedXML library
+- Excel files can be edited with Microsoft Excel, LibreOffice Calc, or Google Sheets
 
 ## License
 

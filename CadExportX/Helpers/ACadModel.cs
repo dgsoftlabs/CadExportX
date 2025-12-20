@@ -1,19 +1,18 @@
-﻿using Autodesk.AutoCAD.ApplicationServices;
+using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Runtime;
+using ClosedXML.Excel;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Controls;
 using System.Xml.Serialization;
-using Exc = Microsoft.Office.Interop.Excel;
 using Reg = Microsoft.Win32;
 using wf = System.Windows.Forms;
 
@@ -177,7 +176,7 @@ namespace ModelSpace
                                             // Block reference
                                             BlockReference blkRef = (BlockReference)tm.GetObject(blId, OpenMode.ForRead, false);
 
-                                            if (blkRef.BlockName.ToUpper() == "*MODEL_SPACE" && blkRef.Name != "WD_M") // Only those that are on the model
+                                            if (blkRef.BlockName.ToUpper() == "*MODEL_SPACE" && blkRef.Name != "WD_M")
                                             {
                                                 // Adding new block and its name
                                                 PageInfoList.Last().Blocks.Add(new BlocksInfo()
@@ -282,8 +281,6 @@ namespace ModelSpace
                 {
                     int i = 1;
 
-                    // Adapting new format
-
                     foreach (PageInfo p in PageInfoList)
                     {
                         try
@@ -298,16 +295,6 @@ namespace ModelSpace
                             Transaction tm = db.TransactionManager.StartTransaction();
                             using (tm)
                             {
-                                //#region Style change
-                                //string stl = "WD_IEC";
-                                //TextStyleTable tst = (TextStyleTable)tm.GetObject(db.TextStyleTableId, OpenMode.ForWrite);
-                                //if (tst.Has(stl))
-                                //{
-                                //    var newstyle = tst[stl];
-                                //    db.Textstyle = newstyle;
-                                //}
-                                //#endregion
-
                                 BlockTable bt = (BlockTable)tm.GetObject(db.BlockTableId, OpenMode.ForRead, false);
                                 foreach (BlocksInfo b in p.Blocks)
                                 {
@@ -333,11 +320,6 @@ namespace ModelSpace
                                                         {
                                                             BlockParam bp = b.Parementers.ToList().Find(x => x.Name == attRef.Tag);
                                                             attRef.UpgradeOpen();
-
-                                                            // Parameter change
-                                                            //if (attRef.Tag.Contains("SIG") && attRef.Tag.Contains("DESC2"))
-                                                            // attRef.Invisible = false;
-
                                                             attRef.TextString = bp.Value;
                                                             bRef.RecordGraphicsModified(true);
                                                         }
@@ -379,7 +361,6 @@ namespace ModelSpace
 
         public void ClearDatabase()
         {
-            // Clearing data
             foreach (var p in PageInfoList)
             {
                 foreach (var b in p.Blocks)
@@ -395,11 +376,8 @@ namespace ModelSpace
             DocumentCollection docs = Application.DocumentManager;
             foreach (Document doc in docs)
             {
-                // First cancel any running command
                 if (doc.CommandInProgress != "" && doc.CommandInProgress != "CD")
                 {
-                    //AcadDocument oDoc = (AcadDocument)doc.GetAcadDocument();
-                    //oDoc.SendCommand();
                     doc.SendStringToExecute("\x03\x03", true, false, false);
                 }
                 doc.CloseAndDiscard();
@@ -472,210 +450,169 @@ namespace ModelSpace
         public async Task GenerateExcelList(ACadViewModel VMod)
         {
             string doc_name = "excel_list";
-            Exc.Application App = null;
-            Exc.Workbook wrk = null;
-            Exc.Worksheet wsh = null;
 
             try
             {
-                // Closing all Excel instances opened in background
-                foreach (var pr in Process.GetProcessesByName("EXCEL"))
+                if (!Directory.Exists($"{VMod.ProjDir}Lists\\"))
+                    Directory.CreateDirectory($"{VMod.ProjDir}Lists\\");
+
+                Mess?.Invoke(" --------------------------------------------");
+                Mess?.Invoke($" ==== EXCEL LIST GENERATION STARTED ====");
+                Mess?.Invoke(" --------------------------------------------");
+
+                // Save file dialog
+                wf.SaveFileDialog sfd = new wf.SaveFileDialog();
+                sfd.Filter = "Excel Files|*.xlsx";
+                sfd.Title = "Save Excel List";
+                sfd.FileName = doc_name;
+                sfd.InitialDirectory = $"{VMod.ProjDir}Lists\\";
+
+                if (sfd.ShowDialog() != wf.DialogResult.OK)
                 {
-                    if (pr.MainWindowTitle == "" || pr.MainWindowTitle.Contains(doc_name + ".xlsx"))
-                        pr.Kill();
+                    Mess?.Invoke("Export canceled by user.");
+                    return;
                 }
 
-                if (!Directory.Exists(Path.GetDirectoryName($"{VMod.ProjDir}Lists\\")))
-                    Directory.CreateDirectory(Path.GetDirectoryName($"{VMod.ProjDir}Lists\\"));
-
-                Mess?.Invoke(" --------------------------------------------");
-                Mess?.Invoke($" ==== EXCEL ALL LIST GENERATION STARTED ====");
-                Mess?.Invoke(" --------------------------------------------");
-
-                App = new Exc.Application() { DisplayAlerts = false };
-                wrk = App.Workbooks.Add(Exc.XlWBATemplate.xlWBATWorksheet);
-                wsh = (Exc.Worksheet)wrk.Worksheets[1];
-                wsh.Name = "ALL";
+                string filePath = sfd.FileName;
 
                 await Task.Run(() =>
                 {
                     try
                     {
-                        // Headers
-                        var hds_first_col = new List<string>() { "ID", "BL_PATH", "BLOCK_NAME", "BL_SH" };
-
-                        // Adding all parameters
-                        string[] all_head = new string[] { };
-                        all_head = SettList.SelectMany(x => x.Params).Where(x => x.Enable).Select(x => x.Name).OrderBy(x => x).ToArray();
-
-                        // Excel header generation
-                        List<string> buff = new List<string>(hds_first_col);
-                        buff.AddRange(all_head);
-                        int p = 1;
-                        foreach (var a in buff)
+                        // Validate data before processing
+                        if (PageInfoList == null || PageInfoList.Count == 0)
                         {
-                            ((Exc.Range)wsh.Cells[1, p]).Value2 = a;
-                            p++;
+                            Mess?.Invoke("Error: No data to export. Please update database first.");
+                            return;
                         }
 
-                        // Sum
-                        int sum = PageInfoList.SelectMany(x => x.Blocks).Count();
-                        int i = 2;
-                        foreach (var pg in PageInfoList)
+                        if (SettList == null || SettList.Count == 0)
                         {
-                            //Rows
-                            foreach (var bl in pg.Blocks.Where(x => SettList.ToList().Exists(m => m.Name == x.Name) && SettList.ToList().Find(m => m.Name == x.Name).Enable))
-                            {
-                                int j = 1;
-                                foreach (var t in buff)
-                                {
-                                    ((Exc.Range)wsh.Cells[i, j]).Value2 = bl.GetValue(t);
-                                    ((Exc.Range)wsh.Cells[i, j]).HorizontalAlignment = Exc.XlHAlign.xlHAlignCenter;
-                                    j++;
-                                }
+                            Mess?.Invoke("Error: No block settings available.");
+                            return;
+                        }
 
-                                i++;
-                                Mess?.Invoke($"{i - 2} -> {sum}");
+                        using (var workbook = new XLWorkbook())
+                        {
+                            var worksheet = workbook.Worksheets.Add("ALL");
+
+                            // Headers
+                            var hds_first_col = new List<string>() { "ID", "BL_PATH", "BLOCK_NAME", "BL_SH" };
+
+                            // Adding all parameters
+                            string[] all_head = SettList
+                                .Where(x => x != null && x.Params != null)
+                                .SelectMany(x => x.Params)
+                                .Where(x => x != null && x.Enable)
+                                .Select(x => x.Name)
+                                .Distinct()
+                                .OrderBy(x => x)
+                                .ToArray();
+
+                            // Excel header generation
+                            List<string> buff = new List<string>(hds_first_col);
+                            buff.AddRange(all_head);
+                            
+                            int p = 1;
+                            foreach (var a in buff)
+                            {
+                                if (!string.IsNullOrEmpty(a))
+                                {
+                                    worksheet.Cell(1, p).Value = a;
+                                    p++;
+                                }
                             }
+
+                            // Sum
+                            int sum = PageInfoList
+                                .Where(x => x != null && x.Blocks != null)
+                                .SelectMany(x => x.Blocks)
+                                .Count();
+
+                            Mess?.Invoke($"Total blocks to export: {sum}");
+
+                            int i = 2;
+                            foreach (var pg in PageInfoList)
+                            {
+                                if (pg == null || pg.Blocks == null)
+                                    continue;
+
+                                foreach (var bl in pg.Blocks.Where(x => 
+                                    x != null && 
+                                    SettList.ToList().Exists(m => m != null && m.Name == x.Name) && 
+                                    SettList.ToList().Find(m => m.Name == x.Name).Enable))
+                                {
+                                    try
+                                    {
+                                        int j = 1;
+                                        foreach (var t in buff)
+                                        {
+                                            if (string.IsNullOrEmpty(t))
+                                                continue;
+
+                                            string value = bl.GetValue(t) ?? "...";
+                                            worksheet.Cell(i, j).Value = value;
+                                            worksheet.Cell(i, j).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                                            j++;
+                                        }
+
+                                        i++;
+                                        
+                                        if ((i - 2) % 100 == 0)
+                                            Mess?.Invoke($"{i - 2} -> {sum}");
+                                    }
+                                    catch (System.Exception ex)
+                                    {
+                                        Mess?.Invoke($"Error processing block {bl?.Name ?? "unknown"}: {ex.Message}");
+                                    }
+                                }
+                            }
+
+                            Mess?.Invoke($"Total rows exported: {i - 2}");
+
+                            // Styling
+                            worksheet.Column(1).Style.Fill.BackgroundColor = XLColor.LightGray;
+                            worksheet.Column(2).Style.Fill.BackgroundColor = XLColor.LightGray;
+                            worksheet.Column(3).Style.Fill.BackgroundColor = XLColor.LightGray;
+
+                            // Freeze panes
+                            worksheet.SheetView.FreezeRows(1);
+                            worksheet.SheetView.FreezeColumns(3);
+
+                            // AutoFilter
+                            worksheet.RangeUsed().SetAutoFilter();
+
+                            // AutoFit columns
+                            worksheet.Columns().AdjustToContents();
+
+                            // Save workbook
+                            if (File.Exists(filePath))
+                                File.Delete(filePath);
+
+                            workbook.SaveAs(filePath);
                         }
                     }
                     catch (System.Exception ex)
                     {
                         Mess?.Invoke($"Error during data processing: {ex.Message}");
+                        Mess?.Invoke($"Stack trace: {ex.StackTrace}");
                         throw;
                     }
                 });
 
                 Mess?.Invoke(" --------------------------------------------");
-                Mess?.Invoke(" ==== EXCEL SG. LIST GENERATION FINISHED ====");
+                Mess?.Invoke(" ==== EXCEL LIST GENERATION FINISHED ====");
                 Mess?.Invoke(" --------------------------------------------");
+                Mess?.Invoke($" File saved: {filePath}");
 
-                ((Exc.Range)wsh.Columns[1]).Interior.Color = System.Drawing.ColorTranslator.ToOle(System.Drawing.Color.LightGray);
-                ((Exc.Range)wsh.Columns[2]).Interior.Color = System.Drawing.ColorTranslator.ToOle(System.Drawing.Color.LightGray);
-                ((Exc.Range)wsh.Columns[3]).Interior.Color = System.Drawing.ColorTranslator.ToOle(System.Drawing.Color.LightGray);
-
-                App.Visible = true;
-
-                ((Exc.Range)wsh.Cells[2, 4]).Select();
-                wsh.Application.ActiveWindow.FreezePanes = true;
-
-                wsh.EnableAutoFilter = true;
-                wsh.Cells.AutoFilter(1);
-                wsh.Columns.AutoFit();
-
-                if (File.Exists($"{VMod.ProjDir}Lists\\{doc_name}.xlsx"))
-                    File.Delete($"{VMod.ProjDir}Lists\\{doc_name}.xlsx");
-
-                wrk.SaveAs($"{VMod.ProjDir}Lists\\{doc_name}.xlsx");
-
-                App.WorkbookAfterSave += App_WorkbookAfterSave;
-                App.WorkbookBeforeClose += App_WorkbookBeforeClose;
+                // Open file with default application (Excel/LibreOffice)
+                Process.Start(new ProcessStartInfo(filePath) { UseShellExecute = true });
             }
             catch (System.Exception ex)
             {
                 Mess?.Invoke($"Error generating Excel list: {ex.Message}");
                 Mess?.Invoke($"Stack trace: {ex.StackTrace}");
-
-                // Try to close Excel if it was opened
-                if (App != null)
-                {
-                    try
-                    {
-                        App.Visible = false;
-                        wrk?.Close(false);
-                        App.Quit();
-                    }
-                    catch
-                    {
-                        // Ignore cleanup errors
-                    }
-                }
             }
-            finally
-            {
-                // Clean up COM objects
-                if (wsh != null)
-                {
-                    Marshal.ReleaseComObject(wsh);
-                    wsh = null;
-                }
-                if (wrk != null)
-                {
-                    Marshal.ReleaseComObject(wrk);
-                    wrk = null;
-                }
-                if (App != null)
-                {
-                    Marshal.ReleaseComObject(App);
-                    App = null;
-                }
-
-                GC.Collect();
-                GC.WaitForPendingFinalizers();
-            }
-        }
-
-        private void App_WorkbookBeforeClose(Exc.Workbook Wb, ref bool Cancel)
-        {
-            Wb.Application.WorkbookAfterSave -= App_WorkbookAfterSave;
-            Wb.Application.WorkbookBeforeClose -= App_WorkbookBeforeClose;
-            GetExcelProcess(Wb.Application)?.Kill();
-        }
-
-        private void App_WorkbookAfterSave(Exc.Workbook Wb, bool Success)
-        {
-            Mess?.Invoke(" --------------------------------------------");
-            Mess?.Invoke("  ====     EXCEL SAVING  STARTED         ====");
-            Mess?.Invoke(" --------------------------------------------");
-
-            Exc.Worksheet whs = (Exc.Worksheet)Wb.Worksheets[1];
-            Mess?.Invoke($"{1} -> {whs.UsedRange.Rows.Count}");
-
-            for (int i = 2; i < whs.UsedRange.Rows.Count + 1; i++)
-            {
-                long id = long.Parse(((Exc.Range)whs.Cells[i, 1]).Value2?.ToString() ?? "0");
-                string pg = ((Exc.Range)whs.Cells[i, 2]).Value2?.ToString() ?? string.Empty;
-
-                for (int j = 5; j < whs.UsedRange.Columns.Count + 1; j++)
-                {
-                    string param = ((Exc.Range)whs.Cells[1, j]).Value2?.ToString() ?? string.Empty;
-                    string val = ((Exc.Range)whs.Cells[i, j]).Value2?.ToString() ?? string.Empty;
-
-                    if (!string.IsNullOrEmpty(param))
-                    {
-                        var p = PageInfoList.ToList().Find(x => x.Path == pg);
-                        var b = p.Blocks.Find(x => x.Id == id);
-
-                        BlockParam par = b.Parementers.ToList().Find(y => y.Name == param);
-                        if (par != null)
-                        {
-                            if (string.IsNullOrEmpty(val))
-                                par.Value = string.Empty;
-                            else
-                                par.Value = val;
-                        }
-                    }
-                }
-
-                Mess?.Invoke($"{i} -> {whs.UsedRange.Rows.Count}");
-            }
-
-            Mess?.Invoke(" --------------------------------------------");
-            Mess?.Invoke(" ====     EXCEL SAVING  FINISHED        =====");
-            Mess?.Invoke(" --------------------------------------------");
-
-            Marshal.FinalReleaseComObject(whs);
-            whs = null;
-        }
-
-        [DllImport("user32.dll")]
-        private static extern int GetWindowThreadProcessId(int hWnd, out int lpdwProcessId);
-
-        private Process GetExcelProcess(Exc.Application excelApp)
-        {
-            int id;
-            GetWindowThreadProcessId(excelApp.Hwnd, out id);
-            return Process.GetProcessById(id);
         }
 
         public async Task ImportExcel(string initPath)
@@ -687,56 +624,65 @@ namespace ModelSpace
             {
                 await Task.Run(() =>
                 {
-                    Mess?.Invoke(" --------------------------------------------");
-                    Mess?.Invoke(" ====     EXCEL SAVING  STARTED          ====");
-                    Mess?.Invoke(" --------------------------------------------");
-
-                    Exc.Application App = new Exc.Application() { DisplayAlerts = false };
-                    Exc.Workbook wrk = App.Workbooks.Open(ofd.FileName);
-                    Exc.Worksheet whs = (Exc.Worksheet)wrk.Worksheets[1];
-
-                    Mess?.Invoke($"{1} -> {whs.UsedRange.Rows.Count}");
-
-                    for (int i = 2; i < whs.UsedRange.Rows.Count + 1; i++)
+                    try
                     {
-                        long id = long.Parse(((Exc.Range)whs.Cells[i, 1]).Value2?.ToString() ?? "0");
-                        string pg = ((Exc.Range)whs.Cells[i, 2]).Value2?.ToString() ?? string.Empty;
+                        Mess?.Invoke(" --------------------------------------------");
+                        Mess?.Invoke(" ====     EXCEL IMPORT STARTED          ====");
+                        Mess?.Invoke(" --------------------------------------------");
 
-                        for (int j = 5; j < whs.UsedRange.Columns.Count + 1; j++)
+                        using (var workbook = new XLWorkbook(ofd.FileName))
                         {
-                            string param = ((Exc.Range)whs.Cells[1, j]).Value2?.ToString() ?? string.Empty;
-                            string val = ((Exc.Range)whs.Cells[i, j]).Value2?.ToString() ?? string.Empty;
+                            var worksheet = workbook.Worksheet(1);
+                            var rowCount = worksheet.RangeUsed().RowCount();
+                            var columnCount = worksheet.RangeUsed().ColumnCount();
 
-                            if (!string.IsNullOrEmpty(param))
+                            Mess?.Invoke($"Reading {rowCount} rows...");
+
+                            for (int i = 2; i <= rowCount; i++)
                             {
-                                var p = PageInfoList.ToList().Find(x => x.Path == pg);
-                                var b = p.Blocks.Find(x => x.Id == id);
+                                long id = long.Parse(worksheet.Cell(i, 1).GetValue<string>() ?? "0");
+                                string pg = worksheet.Cell(i, 2).GetValue<string>() ?? string.Empty;
 
-                                BlockParam par = b.Parementers.ToList().Find(y => y.Name == param);
-                                if (par != null)
+                                for (int j = 5; j <= columnCount; j++)
                                 {
-                                    if (string.IsNullOrEmpty(val))
-                                        par.Value = string.Empty;
-                                    else
-                                        par.Value = val;
+                                    string param = worksheet.Cell(1, j).GetValue<string>() ?? string.Empty;
+                                    string val = worksheet.Cell(i, j).GetValue<string>() ?? string.Empty;
+
+                                    if (!string.IsNullOrEmpty(param))
+                                    {
+                                        var p = PageInfoList.ToList().Find(x => x.Path == pg);
+                                        if (p != null)
+                                        {
+                                            var b = p.Blocks.Find(x => x.Id == id);
+                                            if (b != null)
+                                            {
+                                                BlockParam par = b.Parementers.ToList().Find(y => y.Name == param);
+                                                if (par != null)
+                                                {
+                                                    if (string.IsNullOrEmpty(val))
+                                                        par.Value = string.Empty;
+                                                    else
+                                                        par.Value = val;
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
+
+                                if (i % 100 == 0)
+                                    Mess?.Invoke($"{i} -> {rowCount}");
                             }
                         }
 
-                        Mess?.Invoke($"{i} -> {whs.UsedRange.Rows.Count}");
+                        Mess?.Invoke(" --------------------------------------------");
+                        Mess?.Invoke(" ====     EXCEL IMPORT FINISHED         ====");
+                        Mess?.Invoke(" --------------------------------------------");
                     }
-
-                    Mess?.Invoke(" --------------------------------------------");
-                    Mess?.Invoke(" ====     EXCEL SAVING  FINISHED         ====");
-                    Mess?.Invoke(" --------------------------------------------");
-
-                    Marshal.ReleaseComObject(whs);
-                    Marshal.ReleaseComObject(wrk);
-                    Marshal.ReleaseComObject(App);
-
-                    whs = null;
-                    wrk = null;
-                    App = null;
+                    catch (System.Exception ex)
+                    {
+                        Mess?.Invoke($"Error importing Excel: {ex.Message}");
+                        Mess?.Invoke($"Stack trace: {ex.StackTrace}");
+                    }
                 });
             }
         }

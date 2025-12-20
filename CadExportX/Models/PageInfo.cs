@@ -9,7 +9,6 @@ namespace ModelSpace
     {
         public string Path { get; set; }
         public string Sub { get; set; }
-        public Boolean IsChanged { get; set; }
 
         public string GetPage()
         {
@@ -29,14 +28,6 @@ namespace ModelSpace
                 return System.IO.Path.GetFileNameWithoutExtension(Path);
             else
                 return "???";
-        }
-
-        private ChangesKind Change_;
-
-        public ChangesKind Change
-        {
-            get { return Change_; }
-            set { Change_ = value; }
         }
 
         private List<BlocksInfo> Blocks_ = new List<BlocksInfo>();

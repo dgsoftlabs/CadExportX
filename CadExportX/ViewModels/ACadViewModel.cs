@@ -232,8 +232,28 @@ namespace ModelSpace
 
         private void OnExploreProj(object parameter)
         {
-            if (!string.IsNullOrEmpty(ProjDir))
-                System.Diagnostics.Process.Start(ProjDir);
+            try
+            {
+                if (!string.IsNullOrEmpty(ProjDir))
+                {
+                    var psi = new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = ProjDir,
+                        UseShellExecute = true
+                    };
+                    System.Diagnostics.Process.Start(psi);
+                }
+            }
+            catch (Exception Ex)
+            {
+                if (!Directory.Exists(Plg.LogsFolderPath))
+                    Directory.CreateDirectory(Plg.LogsFolderPath);
+
+                File.WriteAllText($"{Plg.LogsFolderPath}Log_{DateTime.Now.ToString(Plg.LogFormat)}.txt"
+                , Ex.StackTrace);
+
+                Plg.SendInformation(Ex.Message);
+            }
         }
 
         #endregion Open Project Folder

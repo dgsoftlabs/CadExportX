@@ -18,25 +18,19 @@ namespace CadExportX.Tests.Models
         }
 
         [Fact]
-        public void Change_PropertyCanBeSet()
+        public void Name_CanBeSetAndRetrieved()
         {
-            var param = new BlockParam
-            {
-                Change = ChangesKind.Added
-            };
+            var param = new BlockParam { Name = "TestParam" };
 
-            Assert.Equal(ChangesKind.Added, param.Change);
-
-            param.Change = ChangesKind.Modfied;
-            Assert.Equal(ChangesKind.Modfied, param.Change);
+            Assert.Equal("TestParam", param.Name);
         }
 
         [Fact]
-        public void DefaultChange_IsNotChanged()
+        public void Value_CanBeSetAndRetrieved()
         {
-            var param = new BlockParam();
+            var param = new BlockParam { Value = "TestValue" };
 
-            Assert.Equal(ChangesKind.NotChanged, param.Change);
+            Assert.Equal("TestValue", param.Value);
         }
     }
 }

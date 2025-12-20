@@ -29,8 +29,7 @@
     <PackageReference Include="AutoCAD.NET" Version="25.1.0" />
     <PackageReference Include="AutoCAD.NET.Core" Version="25.1.0" />
     <PackageReference Include="AutoCAD.NET.Model" Version="25.1.0" />
-    <PackageReference Include="Microsoft.Office.Interop.Excel" Version="15.0.4795.1001" />
-    <PackageReference Include="Microsoft.Office.Interop.Word" Version="15.0.4797.1004" />
+    <PackageReference Include="ClosedXML" Version="0.104.2" />
   </ItemGroup>
   
   <ItemGroup>
