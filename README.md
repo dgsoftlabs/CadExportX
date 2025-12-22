@@ -1,6 +1,6 @@
 ﻿# CadExportX
 
-![CI/CD](https://github.com/dgsoftlabs/CadExportX/workflows/CI%2FCD%20Pipeline/badge.svg)
+![CI/CD](https://github.com/dgsoftlabs/CadExportX/workflows/Build/badge.svg)
 ![Tests](https://img.shields.io/badge/tests-49%20passing-brightgreen)
 ![.NET](https://img.shields.io/badge/.NET-8.0-blue)
 ![Platform](https://img.shields.io/badge/platform-Windows-lightgrey)
