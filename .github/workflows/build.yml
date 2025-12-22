@@ -150,12 +150,9 @@ jobs:
           -not $shouldExclude -and $name -ne "CadExportX.dll"
         } | Copy-Item -Destination $releaseDir
         
-        @"
-CadExportX v${{ steps.bump_version.outputs.NEW_VERSION }}
-
-This software is provided "as is", without warranty of any kind, express or implied.
-In no event shall the authors or copyright holders be liable for any claim, damages or other liability.
-"@ | Out-File -FilePath "$releaseDir/README.txt" -Encoding UTF8
+        $version = "${{ steps.bump_version.outputs.NEW_VERSION }}"
+        $readmeContent = "CadExportX v$version`n`nThis software is provided `"as is`", without warranty of any kind, express or implied.`nIn no event shall the authors or copyright holders be liable for any claim, damages or other liability."
+        $readmeContent | Out-File -FilePath "$releaseDir/README.txt" -Encoding UTF8
     
     - name: Create ZIP archive
       shell: pwsh
