@@ -1,0 +1,102 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      bump_type:
+        description: 'Version bump type'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: 'patch'
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    
+    permissions:
+      contents: write
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+      
+    - name: Get latest tag and bump version
+      id: bump_version
+      shell: pwsh
+      run: |
+        # Get the latest tag
+        git fetch --tags
+        $latestTag = git tag --sort=-v:refname | Select-Object -First 1
+        
+        if ([string]::IsNullOrEmpty($latestTag)) {
+          # No tags exist, start with v0.1.0
+          $newVersion = "0.1.0"
+        } else {
+          # Parse the version (remove 'v' prefix if exists)
+          $version = $latestTag -replace '^v', ''
+          $versionParts = $version -split '\.'
+          
+          $major = [int]$versionParts[0]
+          $minor = [int]$versionParts[1]
+          $patch = [int]$versionParts[2]
+          
+          # Determine bump type
+          $bumpType = "${{ github.event.inputs.bump_type }}"
+          if ([string]::IsNullOrEmpty($bumpType)) {
+            $bumpType = "patch"
+          }
+          
+          # Bump the version
+          switch ($bumpType) {
+            "major" {
+              $major++
+              $minor = 0
+              $patch = 0
+            }
+            "minor" {
+              $minor++
+              $patch = 0
+            }
+            "patch" {
+              $patch++
+            }
+          }
+          
+          $newVersion = "$major.$minor.$patch"
+        }
+        
+        $newTag = "v$newVersion"
+        echo "NEW_VERSION=$newVersion" >> $env:GITHUB_OUTPUT
+        echo "NEW_TAG=$newTag" >> $env:GITHUB_OUTPUT
+        echo "New version will be: $newTag"
+      
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+    
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
+      
+    - name: Add NuGet source
+      run: nuget sources add -name nuget.org -source https://api.nuget.org/v3/index.json
+      continue-on-error: true
+        
+    - name: Restore NuGet packages
+      run: nuget restore
+    
+    - name: Build Release
+      run: msbuild /p:Configuration=Release /p:Platform="Any CPU" /p:ResolveComReferenceSilent=true /p:EmbedInteropTypes=true
+      
+    - name: Run tests
+      run: dotnet test CadExportX.Tests/CadExportX.Tests.csproj --configuration Release --no-build --verbosity normal
+      
