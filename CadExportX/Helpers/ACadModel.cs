@@ -640,37 +640,51 @@ namespace ModelSpace
 
                             for (int i = 2; i <= rowCount; i++)
                             {
-                                long id = long.Parse(worksheet.Cell(i, 1).GetValue<string>() ?? "0");
-                                string pg = worksheet.Cell(i, 2).GetValue<string>() ?? string.Empty;
-
-                                for (int j = 5; j <= columnCount; j++)
+                                try
                                 {
-                                    string param = worksheet.Cell(1, j).GetValue<string>() ?? string.Empty;
-                                    string val = worksheet.Cell(i, j).GetValue<string>() ?? string.Empty;
+                                    string idValue = worksheet.Cell(i, 1).GetValue<string>() ?? "0";
+                                    string pg = worksheet.Cell(i, 2).GetValue<string>() ?? string.Empty;
 
-                                    if (!string.IsNullOrEmpty(param))
+                                    // Skip rows with invalid or placeholder ID values
+                                    if (string.IsNullOrEmpty(idValue) || idValue == "..." || !long.TryParse(idValue, out long id))
                                     {
-                                        var p = PageInfoList.ToList().Find(x => x.Path == pg);
-                                        if (p != null)
+                                        Mess?.Invoke($"Skipping row {i}: Invalid ID value '{idValue}'");
+                                        continue;
+                                    }
+
+                                    for (int j = 5; j <= columnCount; j++)
+                                    {
+                                        string param = worksheet.Cell(1, j).GetValue<string>() ?? string.Empty;
+                                        string val = worksheet.Cell(i, j).GetValue<string>() ?? string.Empty;
+
+                                        if (!string.IsNullOrEmpty(param))
                                         {
-                                            var b = p.Blocks.Find(x => x.Id == id);
-                                            if (b != null)
+                                            var p = PageInfoList.ToList().Find(x => x.Path == pg);
+                                            if (p != null)
                                             {
-                                                BlockParam par = b.Parementers.ToList().Find(y => y.Name == param);
-                                                if (par != null)
+                                                var b = p.Blocks.Find(x => x.Id == id);
+                                                if (b != null)
                                                 {
-                                                    if (string.IsNullOrEmpty(val))
-                                                        par.Value = string.Empty;
-                                                    else
-                                                        par.Value = val;
+                                                    BlockParam par = b.Parementers.ToList().Find(y => y.Name == param);
+                                                    if (par != null)
+                                                    {
+                                                        if (string.IsNullOrEmpty(val))
+                                                            par.Value = string.Empty;
+                                                        else
+                                                            par.Value = val;
+                                                    }
                                                 }
                                             }
                                         }
                                     }
-                                }
 
-                                if (i % 100 == 0)
-                                    Mess?.Invoke($"{i} -> {rowCount}");
+                                    if (i % 100 == 0)
+                                        Mess?.Invoke($"{i} -> {rowCount}");
+                                }
+                                catch (System.Exception ex)
+                                {
+                                    Mess?.Invoke($"Error processing row {i}: {ex.Message}");
+                                }
                             }
                         }
 
