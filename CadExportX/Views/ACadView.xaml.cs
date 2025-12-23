@@ -11,7 +11,6 @@ namespace ModelSpace
     /// Interaction logic for Manager.xaml
     /// </summary>
     ///
-
     public partial class ACadView : UserControl
     {
         private ACadModel mod { get; set; }

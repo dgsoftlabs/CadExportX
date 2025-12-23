@@ -372,6 +372,75 @@
             <Setter Property="Background" Value="{StaticResource AutoCADDarkerBackground}" />
             <Setter Property="Foreground" Value="{StaticResource AutoCADTextSecondary}" />
         </Style>
+
+        <!-- Dark Theme MenuItem Style -->
+        <Style x:Key="DarkMenuItemStyle" TargetType="MenuItem">
+            <Setter Property="Foreground" Value="{StaticResource AutoCADTextPrimary}" />
+            <Setter Property="Background" Value="{StaticResource AutoCADDarkBackground}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="8,6" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="MenuItem">
+                        <Border x:Name="Border"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" MinWidth="20" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <ContentPresenter Grid.Column="0"
+                                                ContentSource="Icon"
+                                                VerticalAlignment="Center"
+                                                Margin="4,0,0,0" />
+
+                                <ContentPresenter Grid.Column="1"
+                                                ContentSource="Header"
+                                                VerticalAlignment="Center"
+                                                Margin="{TemplateBinding Padding}"
+                                                RecognizesAccessKey="True" />
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="Border" Property="Background" Value="{StaticResource AutoCADAccent}" />
+                                <Setter Property="Foreground" Value="{StaticResource AutoCADTextPrimary}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Foreground" Value="{StaticResource AutoCADTextSecondary}" />
+                                <Setter Property="Opacity" Value="0.5" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Dark Theme ContextMenu Style -->
+        <Style x:Key="DarkContextMenuStyle" TargetType="ContextMenu">
+            <Setter Property="Background" Value="{StaticResource AutoCADDarkBackground}" />
+            <Setter Property="BorderBrush" Value="{StaticResource AutoCADBorder}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="2" />
+            <Setter Property="HasDropShadow" Value="True" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ContextMenu">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="2"
+                                Padding="{TemplateBinding Padding}">
+                            <StackPanel IsItemsHost="True"
+                                       KeyboardNavigation.DirectionalNavigation="Cycle" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </UserControl.Resources>
 
     <Grid>
@@ -498,11 +567,13 @@
                     <ListBox x:Name="LbBlk" Grid.Row="1" ItemsSource="{Binding Plg.SettList}"
                             Style="{StaticResource DarkListBoxStyle}">
                         <ListBox.ContextMenu>
-                            <ContextMenu Background="{StaticResource AutoCADDarkBackground}">
-                                <MenuItem Header="Select All" Command="{Binding BlSelAllCommand}"
-                                    Foreground="{StaticResource AutoCADTextPrimary}" />
-                                <MenuItem Header="Unselect All" Command="{Binding BlUnSelAllCommand}"
-                                Foreground="{StaticResource AutoCADTextPrimary}" />
+                            <ContextMenu Style="{StaticResource DarkContextMenuStyle}">
+                                <MenuItem Header="Select All"
+                                          Command="{Binding BlSelAllCommand}"
+                                          Style="{StaticResource DarkMenuItemStyle}" />
+                                <MenuItem Header="Unselect All"
+                                          Command="{Binding BlUnSelAllCommand}"
+                                          Style="{StaticResource DarkMenuItemStyle}" />
                             </ContextMenu>
                         </ListBox.ContextMenu>
 
@@ -536,11 +607,13 @@
                     ItemsSource="{Binding ElementName=LbBlk, Path=SelectedItem.Params}"
                         Style="{StaticResource DarkListBoxStyle}">
                         <ListBox.ContextMenu>
-                            <ContextMenu Background="{StaticResource AutoCADDarkBackground}">
-                                <MenuItem Header="Select All" Command="{Binding AtSelAllCommand}"
-                                    Foreground="{StaticResource AutoCADTextPrimary}" />
-                                <MenuItem Header="Unselect All" Command="{Binding AtUnSelAllCommand}"
-                                Foreground="{StaticResource AutoCADTextPrimary}" />
+                            <ContextMenu Style="{StaticResource DarkContextMenuStyle}">
+                                <MenuItem Header="Select All"
+                                          Command="{Binding AtSelAllCommand}"
+                                          Style="{StaticResource DarkMenuItemStyle}" />
+                                <MenuItem Header="Unselect All"
+                                          Command="{Binding AtUnSelAllCommand}"
+                                          Style="{StaticResource DarkMenuItemStyle}" />
                             </ContextMenu>
                         </ListBox.ContextMenu>
 
@@ -603,7 +676,7 @@
                            TextWrapping="Wrap"
                           TextAlignment="Center"
                       Margin="10,0,10,5" />
-                                        <TextBlock Text="Please wait..."
+                    <TextBlock Text="Please wait..."
                       FontSize="12"
                        Foreground="{StaticResource AutoCADTextSecondary}"
                        HorizontalAlignment="Center" />

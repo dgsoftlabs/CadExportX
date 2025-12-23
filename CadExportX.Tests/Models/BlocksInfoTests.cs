@@ -4,8 +4,6 @@ namespace CadExportX.Tests.Models
 {
     public class BlocksInfoTests
     {
-  
-
         [Fact]
         public void GetValue_ReturnsParameterValue()
         {

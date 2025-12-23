@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 
@@ -38,7 +37,7 @@ namespace ModelSpace
             {
                 if (string.IsNullOrEmpty(name))
                     return "...";
-                            
+
                 return Parameters_?.ToList()?.Find(x => x != null && x.Name == name)?.Value ?? "...";
             }
             catch (Exception)

@@ -1,6 +1,5 @@
-using Autodesk.AutoCAD.ApplicationServices;
+﻿using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.DatabaseServices;
-using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Runtime;
 using ClosedXML.Excel;
 using System;
@@ -39,7 +38,7 @@ namespace ModelSpace
 
         public ObservableCollection<Settings> SettList { get; set; }
 
-        private Boolean IsElectrical { get; set; }
+        private bool IsElectrical { get; set; }
         private string ElectricalProjPath { get; set; }
         private List<Tuple<string, string>> ElectricalPaths { get; set; }
 
@@ -57,23 +56,23 @@ namespace ModelSpace
                 if (syncCtrl == null)
                     syncCtrl = new Control();
 
-                System.Diagnostics.Debug.WriteLine("=== CadExportX: syncCtrl initialized ===");
+                Debug.WriteLine("=== CadExportX: syncCtrl initialized ===");
 
                 PageInfoList = new ObservableCollection<PageInfo>();
                 SettList = new ObservableCollection<Settings>();
 
-                System.Diagnostics.Debug.WriteLine("=== CadExportX: Creating ViewModel ===");
+                Debug.WriteLine("=== CadExportX: Creating ViewModel ===");
                 ViewModel = new ACadViewModel(this);
 
-                System.Diagnostics.Debug.WriteLine("=== CadExportX: ViewModel created successfully ===");
+                Debug.WriteLine("=== CadExportX: ViewModel created successfully ===");
 
                 Mess += AutoCadCablePlug_Mess;
             }
             catch (System.Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"=== CadExportX ERROR: {ex.Message} ===");
-                System.Diagnostics.Debug.WriteLine($"Stack: {ex.StackTrace}");
-                Application.DocumentManager.MdiActiveDocument?.Editor?.WriteMessage($"\nCadExportX Error: {ex.Message}\n");
+                Debug.WriteLine($"=== CadExportX ERROR: {ex.Message} ===");
+                Debug.WriteLine($"Stack: {ex.StackTrace}");
+                Autodesk.AutoCAD.ApplicationServices.Core.Application.DocumentManager.MdiActiveDocument?.Editor?.WriteMessage($"\nCadExportX Error: {ex.Message}\n");
             }
         }
 
@@ -89,6 +88,11 @@ namespace ModelSpace
 
         public async Task DatabaseUpdate(string pr)
         {
+            // Local variables for easier debugging
+            List<Tuple<string, string>> dwgs = null;
+            int processedCount = 0;
+            int totalCount = 0;
+
             try
             {
                 CloseDocuments();
@@ -96,9 +100,11 @@ namespace ModelSpace
 
                 #region Electrical Prepartion
 
-                List<Tuple<string, string>> dwgs = new List<Tuple<string, string>>();
+                dwgs = new List<Tuple<string, string>>();
                 foreach (var i in Directory.GetFiles(pr, "*.dwg", SearchOption.AllDirectories))
                     dwgs.Add(new Tuple<string, string>(i, Path.GetFileName(Path.GetDirectoryName(i))));
+
+                totalCount = dwgs.Count;
 
                 if (dwgs.Count == 0)
                 {
@@ -143,7 +149,7 @@ namespace ModelSpace
                     Mess?.Invoke(" ====     DATABASE UPDATE STARTED        ====");
                     Mess?.Invoke(" --------------------------------------------");
 
-                    int i = 1;
+                    processedCount = 1;
                     foreach (var x in dwgs)
                     {
                         tokenSource.Token.ThrowIfCancellationRequested();
@@ -200,9 +206,9 @@ namespace ModelSpace
                                     }
                                 }
 
-                                Mess?.Invoke($"Drawing Proceed: {x.Item1.Replace(pr, @" ... \")} [ {i} - {dwgs.Count} ]");
+                                Mess?.Invoke($"Drawing Proceed: {x.Item1.Replace(pr, @" ... \")} [ {processedCount} - {dwgs.Count} ]");
 
-                                i++;
+                                processedCount++;
                             }
                             db.Dispose();
                             db = null;
@@ -262,7 +268,7 @@ namespace ModelSpace
         {
             syncCtrl.Dispatcher.InvokeAsync(new Action(() =>
             {
-                Application.DocumentManager.MdiActiveDocument?.Editor?.WriteMessage($"{msg}{Environment.NewLine}");
+                Autodesk.AutoCAD.ApplicationServices.Core.Application.DocumentManager.MdiActiveDocument?.Editor?.WriteMessage($"{msg}{Environment.NewLine}");
             }));
         }
 
@@ -373,7 +379,7 @@ namespace ModelSpace
 
         public void CloseDocuments()
         {
-            DocumentCollection docs = Application.DocumentManager;
+            DocumentCollection docs = Autodesk.AutoCAD.ApplicationServices.Core.Application.DocumentManager;
             foreach (Document doc in docs)
             {
                 if (doc.CommandInProgress != "" && doc.CommandInProgress != "CD")
@@ -391,7 +397,7 @@ namespace ModelSpace
                 string m = $"{Environment.CurrentDirectory}\\wait.dwg";
                 if (File.Exists(m))
                 {
-                    Application.DocumentManager.Open(m);
+                    Autodesk.AutoCAD.ApplicationServices.Core.Application.DocumentManager.Open(m);
                 }
             }
             catch (System.Exception Ex)
@@ -405,7 +411,7 @@ namespace ModelSpace
             string x = $"{Environment.CurrentDirectory}\\ready.dwg";
             if (File.Exists(x))
             {
-                Application.DocumentManager.Open(x);
+                Autodesk.AutoCAD.ApplicationServices.Core.Application.DocumentManager.Open(x);
             }
         }
 
@@ -492,9 +498,9 @@ namespace ModelSpace
                             return;
                         }
 
-                        using (var workbook = new XLWorkbook())
+                        using (XLWorkbook workbook = new XLWorkbook())
                         {
-                            var worksheet = workbook.Worksheets.Add("ALL");
+                            IXLWorksheet worksheet = workbook.Worksheets.Add("ALL");
 
                             // Headers
                             var hds_first_col = new List<string>() { "ID", "BL_PATH", "BLOCK_NAME", "BL_SH" };
@@ -512,7 +518,7 @@ namespace ModelSpace
                             // Excel header generation
                             List<string> buff = new List<string>(hds_first_col);
                             buff.AddRange(all_head);
-                            
+
                             int p = 1;
                             foreach (var a in buff)
                             {
@@ -537,9 +543,9 @@ namespace ModelSpace
                                 if (pg == null || pg.Blocks == null)
                                     continue;
 
-                                foreach (var bl in pg.Blocks.Where(x => 
-                                    x != null && 
-                                    SettList.ToList().Exists(m => m != null && m.Name == x.Name) && 
+                                foreach (var bl in pg.Blocks.Where(x =>
+                                    x != null &&
+                                    SettList.ToList().Exists(m => m != null && m.Name == x.Name) &&
                                     SettList.ToList().Find(m => m.Name == x.Name).Enable))
                                 {
                                     try
@@ -557,7 +563,7 @@ namespace ModelSpace
                                         }
 
                                         i++;
-                                        
+
                                         if ((i - 2) % 100 == 0)
                                             Mess?.Invoke($"{i - 2} -> {sum}");
                                     }
@@ -630,9 +636,9 @@ namespace ModelSpace
                         Mess?.Invoke(" ====     EXCEL IMPORT STARTED          ====");
                         Mess?.Invoke(" --------------------------------------------");
 
-                        using (var workbook = new XLWorkbook(ofd.FileName))
+                        using (XLWorkbook workbook = new XLWorkbook(ofd.FileName))
                         {
-                            var worksheet = workbook.Worksheet(1);
+                            IXLWorksheet worksheet = workbook.Worksheet(1);
                             var rowCount = worksheet.RangeUsed().RowCount();
                             var columnCount = worksheet.RangeUsed().ColumnCount();
 

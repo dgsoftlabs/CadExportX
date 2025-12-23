@@ -4,7 +4,10 @@
       "commandName": "Executable",
       "executablePath": "C:\\Program Files\\Autodesk\\AutoCAD 2026\\acad.exe",
       "commandLineArgs": "/b \"D:\\PROJEKTY\\DanielSan1000\\CadExportX\\CadExportX\\DebugLoad.scr\"",
-      "workingDirectory": "D:\\PROJEKTY\\DanielSan1000\\CadExportX\\CadExportX"
+      "workingDirectory": "D:\\PROJEKTY\\DanielSan1000\\CadExportX\\CadExportX",
+      "nativeDebugging": true,
+      "enableSqlDebugging": false,
+      "remoteDebugEnabled": false
     }
   }
 }
