@@ -9,11 +9,32 @@
 
 **CadExportX** is an AutoCAD plugin designed to **dramatically accelerate workflow in engineering projects** created in AutoCAD. The application addresses a common challenge in large-scale technical documentation: managing and editing block attributes across hundreds or thousands of drawings.
 
-![CadExportX Interface](CadExportX.png)
+<p align="center"><img src="CadExportX.png" width="75%"></p>
+
+## Getting Started
+
+This quick guide helps you get the plugin loaded and perform your first export/import cycle.
+1. Open AutoCad (2020 or newer)
+2. Load the plugin using the `NETLOAD` command and select `CadExportX.dll`
+3. The "CadExportX" palette will appear automatically
+4. Set your project directory by clicking the folder icon
+5. Click "Read All Drawings" to scan DWG files
+    - The plugin will create a database (Database.xml) of all blocks and their attributes
+	- Due to this you dont need to read drawings again and again 
+    - The database will be stored in the project directory (selected folder where all .dwgs files exists)
+6. Configure which blocks and attributes to export
+7. Click "Export to Excel" to generate the spreadsheet
+8. Edit the Excel file as needed and save it in Excel, LibreOffice
+9. Click "Import from Excel" to load your changes back into AutoCAD
+   - At this point you will have changes only in database not in drawings!!!
+10. Click "Save All Drawings" to apply changes to all DWG files
+   - Data are trasfered from database to drawings (*.dwg)
+11. Now all parameters in your drawings are updated automatically!
 
 ### The Problem It Solves
 
-In typical engineering projects (especially electrical, mechanical, or process engineering), technical drawings contain numerous blocks with attributes that need frequent updates. Making changes manually across multiple drawings is:
+In typical engineering projects (especially electrical, mechanical, or process engineering), 
+technical drawings contain numerous blocks with attributes that need frequent updates. Making changes manually across multiple drawings is:
 - **Time-consuming** - opening each drawing individually takes hours or days
 - **Error-prone** - manual editing increases the risk of inconsistencies
 - **Difficult to track** - hard to maintain an overview of all elements across the project
@@ -42,7 +63,8 @@ The plugin was created to:
 - **Multi-page, multi-block editing** - make consistent changes across entire projects without opening individual drawings
 - **Manage AutoCAD Electrical projects** - handle `.wdp` projects with automatic folder structure detection
 
-![CadExportX Interface](CadExportXMini.png)
+
+<p align="center"><img src="CadExportXMini.png" width="35%"></p>
 
 ### Key Features
 
@@ -61,64 +83,19 @@ Exports block data to Excel spreadsheet with:
 - Frozen header rows for easy navigation
 - Color-coded system columns
 
-#### 3. **Excel Import (Bidirectional Sync)**
-Import updated values from any Excel file:
-- **Import mode** - select any Excel file to import updated values
-- Supports files edited in Microsoft Excel, LibreOffice Calc, or Google Sheets
-
 Changes are tracked and validated before being written to drawings.
 
-#### 4. **Batch Save to Drawings**
+#### 3. **Batch Save to Drawings**
 Applies all changes from the database back to the original DWG files:
 - Preserves drawing integrity
 - Updates only modified attributes
 - Processes files in background
 - Progress tracking and error reporting
-
-#### 5. **Helper Tools**
-Specialized commands for common tasks:
-- Terminal numbering with custom patterns
-- Cable pair numbering (alternating colors)
-- Sequential cable numbering
-- Alternating text descriptions
-
-#### 6. **DWG Inspector**
+- 
+#### 4. **DWG Inspector**
 Built-in tool for viewing and analyzing dynamic block properties without opening the drawing.
 
-![DWG Inspector Interface](CadExportXInspector.png)
-
-### Typical Workflow
-
-```
-1. Set Project Directory
-   └─> Select folder with your DWG files
-
-2. Update Database
-   └─> Plugin scans all drawings and reads block attributes
-   └─> Database saved for quick access
-
-3. Configure Export
-   └─> Select which block types to include
-   └─> Choose which attributes to export
-
-4. Generate Excel List
-   └─> Structured spreadsheet created with all data
-   └─> File saved to project's "Lists" folder
-   └─> File opens automatically in default spreadsheet application
-
-5. Edit in Excel/LibreOffice/Google Sheets
-   └─> Use spreadsheet tools (formulas, find/replace, etc.)
-   └─> Make changes to hundreds of blocks simultaneously
-   └─> Save the file
-
-6. Import Changes
-   └─> Load the modified Excel file
-   └─> Changes validated and imported to database
-
-7. Save All Drawings
-   └─> Plugin applies changes to all affected DWG files
-   └─> All drawings updated automatically
-```
+<p align="center"><img src="CadExportXInspector.png" width="45%"></p>
 
 ### Real-World Benefits
 
@@ -183,20 +160,6 @@ The generated .xlsx files are fully compatible with:
 - **Google Sheets**
 - Any other spreadsheet application that supports .xlsx format
 
-## Project Structure
-
-```
-CadExportX/
-├── CadExportX.csproj          # Main project file
-├── ACadModel.cs               # Core plugin logic and AutoCAD API integration
-├── ACadViewModel.cs      # MVVM ViewModel for UI
-├── ACadView.xaml        # WPF user interface
-├── AutoCADTheme.cs      # Dark theme styling
-├── Elements/
-│   └── DwgInspector.cs        # DWG inspector tool
-└── README.md            # This file
-```
-
 ## Requirements
 
 - AutoCAD 2020 or newer
@@ -207,7 +170,7 @@ CadExportX/
 
 ## License
 
-This project is licensed under the terms specified in the repository.
+This project is licensed under the MIT License. See the `LICENSE` file for details.
 
 ## Contributing
 
@@ -249,7 +212,7 @@ dotnet test --verbosity detailed
 
 The project uses GitHub Actions for continuous integration:
 - ✅ Automated builds on every push and PR
-- ✅ 49 unit tests covering models and commands
+- ✅ 35 unit tests covering models and commands
 - ✅ Code quality checks
 - ✅ Windows-based testing environment
 
